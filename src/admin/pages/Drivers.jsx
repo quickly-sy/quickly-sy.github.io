@@ -52,12 +52,19 @@ export default function Drivers() {
 
       <section className="panel table-wrap">
         <table>
-          <thead><tr><th>السائق</th><th>المركبة</th><th>الحالة</th><th>آخر موقع</th><th>مفعّل</th><th></th></tr></thead>
+          <thead><tr><th>السائق</th><th>المركبة</th><th>النوع</th><th>الحالة</th><th>آخر موقع</th><th>مفعّل</th><th></th></tr></thead>
           <tbody>
             {drivers.map((d) => (
               <tr key={d.id}>
                 <td><strong>{d.profile?.name}</strong><div className="muted" dir="ltr" style={{ textAlign: 'right' }}>{d.profile?.phone}</div></td>
                 <td>{VEHICLES[d.vehicle_type] || d.vehicle_type}</td>
+                <td>
+                  <button className={`sm ${d.kind === 'private' ? '' : 'ghost'}`}
+                          onClick={() => window.confirm(d.kind === 'private' ? 'تحويله لسائق توصيل عادي؟' : 'تحويله لسائق خاص؟ لن تصله طلبات التوصيل بعدها.') &&
+                                         update(d, { kind: d.kind === 'private' ? 'delivery' : 'private' })}>
+                    {d.kind === 'private' ? 'خاص 🔒' : 'توصيل'}
+                  </button>
+                </td>
                 <td><span className={`badge ${d.status}`}>{DRIVER_STATUS[d.status]}</span></td>
                 <td className="muted">{d.location_at ? new Date(d.location_at).toLocaleTimeString('ar') : '—'}</td>
                 <td><button className={`sm ${d.is_active ? 'ok' : 'danger'}`} onClick={() => update(d, { is_active: !d.is_active })}>{d.is_active ? 'مفعّل' : 'موقوف'}</button></td>

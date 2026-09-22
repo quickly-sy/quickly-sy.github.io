@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run } from './supabase';
 import { LOGIN_EMAIL_BASE } from './config';
+import logo from './assets/quickly-logo.webp';
+import ThemeToggle from './ThemeToggle';
 
 const ROLE_LABEL = { customer: 'زبون', vendor: 'متجر', driver: 'سائق', admin: 'إدارة' };
 
@@ -63,7 +65,7 @@ export function useProfile(role) {
   return { profile, loading, error, reload, logout };
 }
 
-export function Login({ title, subtitle, allowRegister = false, onDone, error: outerError }) {
+export function Login({ title, subtitle, allowRegister = false, onDone, error: outerError, themeToggle = false }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ name: '', phone: '', password: '' });
   const [error, setError] = useState('');
@@ -101,8 +103,9 @@ export function Login({ title, subtitle, allowRegister = false, onDone, error: o
 
   return (
     <div className="auth">
+      {themeToggle && <ThemeToggle className="ghost" />}
       <div className="auth-brand">
-        <span className="logo">Quickly</span>
+        <img src={logo} alt="Quickly" />
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>

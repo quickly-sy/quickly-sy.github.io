@@ -9,7 +9,8 @@ const BackgroundGeolocation = registerPlugin('BackgroundGeolocation');
 const LocalNotifications = registerPlugin('LocalNotifications');
 
 // يبدأ متابعة الموقع ويرجّع دالة الإيقاف
-export function watchLocation(onPosition) {
+// distanceFilter: 10 = يوفّر البطارية، 0 = تحديث مستمر حتى بدون حركة (للمهمات الخاصة)
+export function watchLocation(onPosition, { distanceFilter = 10 } = {}) {
   if (isNativeApp) {
     let watcherId = null;
     let stopped = false;
@@ -26,7 +27,7 @@ export function watchLocation(onPosition) {
             backgroundMessage: 'يتم إرسال موقعك أثناء العمل',
             requestPermissions: true,
             stale: false,
-            distanceFilter: 10, // متر
+            distanceFilter,
           },
           (location, error) => {
             if (error) {

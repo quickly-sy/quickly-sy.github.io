@@ -11,7 +11,12 @@ const pin = (emoji, cls = '') =>
 export const icons = {
   vendor: pin('🏪'),
   home: pin('🏠'),
+  bank: pin('🏦'),
   driver: pin('🛵', 'driver'),
+  // للوحة الإدارة: لون الإطار حسب حالة السائق
+  driverAvailable: pin('🛵', 'driver available'),
+  driverBusy: pin('🛵', 'driver busy'),
+  driverOffline: pin('🛵', 'driver offline'),
 };
 
 export function BaseMap({ center, zoom = 13, height = 340, children }) {

@@ -13,6 +13,21 @@ export const STATUS = {
 export const DRIVER_STATUS = { available: 'متاح', busy: 'مشغول', offline: 'غير متصل' };
 export const ACTIVE_STATUSES = ['confirmed', 'preparing', 'ready', 'picked'];
 
+// مهمات السائق الخاص
+export const TASK_STATUS = { assigned: 'بانتظار الانطلاق', started: 'في الطريق', arrived: 'وصل', done: 'تمت', cancelled: 'ملغاة' };
+export const TASK_BADGE = { assigned: 'pending', started: 'picked', arrived: 'ready', done: 'delivered', cancelled: 'cancelled' };
+export const TASK_RUNNING = ['started', 'arrived'];
+
+// المسافة بالمتر بين نقطتين [lat, lng]
+export function distanceM(a, b) {
+  if (!a || !b) return Infinity;
+  const r = (d) => (d * Math.PI) / 180;
+  const dLat = r(b[0] - a[0]);
+  const dLng = r(b[1] - a[1]);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a[0])) * Math.cos(r(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(h));
+}
+
 export const money = (n) => `${Number(n || 0).toLocaleString('en-US')} ${CURRENCY}`;
 export const toPoint = (lat, lng) => (lat != null && lng != null ? [Number(lat), Number(lng)] : null);
 export const formatTime = (d) =>

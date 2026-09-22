@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Marker } from 'react-leaflet';
 import { supabase, run, rpc, subscribe } from '../shared/supabase';
 import { BaseMap, FitBounds, icons, DEFAULT_CENTER } from '../shared/map';
-import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, money, toPoint, playBeep } from '../shared/utils';
+import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, TASK_STATUS, TASK_BADGE, TASK_RUNNING, money, toPoint, playBeep } from '../shared/utils';
 import { watchLocation, sendLocation, isNativeApp, openAppSettings } from './location';
 
 // توفير رسائل Realtime: كل 5 ثواني أثناء التوصيل، وكل 30 ثانية وأنت فاضي
@@ -16,6 +16,7 @@ export default function Dashboard({ profile }) {
   const [me, setMe] = useState(null);
   const [offers, setOffers] = useState([]);
   const [active, setActive] = useState([]);
+  const [tasks, setTasks] = useState([]); // مهمات السائق الخاص
   const [pos, setPos] = useState(null);
   const [simulate, setSimulate] = useState(false);
   const [error, setError] = useState('');
@@ -23,19 +24,24 @@ export default function Dashboard({ profile }) {
   const posRef = useRef(null);
   const simRef = useRef(false);
   const activeRef = useRef([]);
+  const tasksRef = useRef([]);
   simRef.current = simulate;
   activeRef.current = active;
+  tasksRef.current = tasks;
 
   const load = useCallback(async () => {
     try {
       const m = await run(supabase.from('drivers').select('*').eq('user_id', profile.id).single());
-      const [o, a] = await Promise.all([
-        m.status === 'available' ? run(supabase.from('order_offers').select('*').order('order_id')) : [],
-        run(supabase.from('orders').select('*, order_items(*)').eq('driver_id', m.id).in('status', ACTIVE_STATUSES).order('id')),
+      const isPrivate = m.kind === 'private';
+      const [o, a, t] = await Promise.all([
+        !isPrivate && m.status === 'available' ? run(supabase.from('order_offers').select('*').order('order_id')) : [],
+        isPrivate ? [] : run(supabase.from('orders').select('*, order_items(*)').eq('driver_id', m.id).in('status', ACTIVE_STATUSES).order('id')),
+        isPrivate ? run(supabase.from('tasks').select('*').eq('driver_id', m.id).in('status', ['assigned', ...TASK_RUNNING]).order('id')) : [],
       ]);
       setMe(m);
       setOffers(o);
       setActive(a);
+      setTasks(t);
       if (!posRef.current) {
         posRef.current = toPoint(m.current_lat, m.current_lng) || DEFAULT_CENTER;
         setPos(posRef.current);
@@ -61,11 +67,22 @@ export default function Dashboard({ profile }) {
   const myId = me?.id;
   useEffect(() => {
     if (!myId) return;
-    return subscribe([{ event: '*', table: 'orders', filter: `driver_id=eq.${myId}` }], load);
+    return subscribe(
+      [
+        { event: '*', table: 'orders', filter: `driver_id=eq.${myId}` },
+        { event: '*', table: 'tasks', filter: `driver_id=eq.${myId}` },
+      ],
+      (payload) => {
+        if (payload.table === 'tasks' && payload.eventType === 'INSERT') playBeep(); // مهمة جديدة
+        load();
+      }
+    );
   }, [myId, load]);
 
   const online = !!me && me.status !== 'offline';
-  const hasActive = active.length > 0;
+  const isPrivate = me?.kind === 'private';
+  const runningTask = tasks.find((t) => TASK_RUNNING.includes(t.status));
+  const hasActive = active.length > 0 || !!runningTask;
 
   // إبقاء الشاشة مضاءة أثناء التوصيل (Screen Wake Lock) — بدونها الموبايل يطفي الشاشة ويتوقف إرسال الموقع
   const [awake, setAwake] = useState(false);
@@ -98,17 +115,21 @@ export default function Dashboard({ profile }) {
   // GPS الحقيقي (بالتطبيق: يستمر بالخلفية ويرسل الموقع مباشرة من هنا)
   useEffect(() => {
     if (!online) return;
-    return watchLocation((p) => {
-      if (simRef.current) return;
-      posRef.current = p;
-      maybeSend();
-    });
-  }, [online]);
+    return watchLocation(
+      (p) => {
+        if (simRef.current) return;
+        posRef.current = p;
+        maybeSend();
+      },
+      { distanceFilter: runningTask ? 0 : 10 } // المهمة الخاصة: تحديث مستمر حتى لو واقف
+    );
+  }, [online, !!runningTask]);
 
   // إرسال الموقع: كل 5 ثواني أثناء التوصيل، وكل 30 ثانية وأنت فاضي
   const lastSentRef = useRef(0);
   const everyRef = useRef(EVERY_IDLE_MS);
-  everyRef.current = hasActive ? EVERY_ACTIVE_MS : EVERY_IDLE_MS;
+  const every = hasActive ? EVERY_ACTIVE_MS : EVERY_IDLE_MS;
+  everyRef.current = every;
 
   function maybeSend(force = false) {
     const p = posRef.current;
@@ -127,14 +148,20 @@ export default function Dashboard({ profile }) {
       maybeSend(simRef.current);
     };
     maybeSend(true);
-    const timer = setInterval(tick, hasActive ? EVERY_ACTIVE_MS : EVERY_IDLE_MS);
+    const timer = setInterval(tick, every);
     return () => clearInterval(timer);
-  }, [online, hasActive]);
+  }, [online, every]);
 
   // وضع المحاكاة: يقرّب السائق 25% نحو هدفه بكل تحديث (للتجربة من الكمبيوتر)
   function moveTowardTarget() {
-    const order = activeRef.current[0];
     const p = posRef.current;
+    const task = tasksRef.current.find((t) => TASK_RUNNING.includes(t.status));
+    if (task && p) {
+      const to = toPoint(task.to_lat, task.to_lng);
+      if (to) posRef.current = [p[0] + (to[0] - p[0]) * 0.25, p[1] + (to[1] - p[1]) * 0.25];
+      return;
+    }
+    const order = activeRef.current[0];
     if (!order || !p) return;
     const target = order.status === 'picked'
       ? toPoint(order.customer_lat, order.customer_lng)
@@ -164,14 +191,12 @@ export default function Dashboard({ profile }) {
           <div>
             <h3>حالتك الآن: <span className={`badge ${me.status}`}>{DRIVER_STATUS[me.status]}</span></h3>
             <div className="muted">
-              {online ? (hasActive ? 'موقعك يُرسل كل 5 ثواني.' : 'موقعك يُرسل كل 30 ثانية.') : 'أنت غير متصل، لن تصلك عروض.'}
+              {!online && 'أنت غير متصل، لن تصلك طلبات'}
+              {online && runningTask && 'تتبع كامل: موقعك يُرسل كل 5 ثواني ويُسجَّل المسار.'}
+              {online && hasActive && !runningTask && 'العميل بانتظارك لاستلام الطلب'}
+              {online && !hasActive && me.status === 'available' && (isPrivate ? 'حسابك متاح لاستقبال المهام' : 'حسابك متاح لاستقبال الطلبات')}
+              {online && !hasActive && me.status === 'busy' && 'حالتك مشغول: لن تصلك طلبات جديدة'}
             </div>
-            {isNativeApp && (
-              <div className="row" style={{ marginTop: 8 }}>
-                <span className="notice">موقعك يُتابَع حتى والشاشة مطفية.</span>
-                <button className="ghost sm" onClick={openAppSettings}>إعدادات التطبيق</button>
-              </div>
-            )}
             {hasActive && !isNativeApp && (
               <div className={awake ? 'notice' : 'error'} style={{ marginTop: 8 }}>
                 {awake
@@ -187,6 +212,9 @@ export default function Dashboard({ profile }) {
                 {DRIVER_STATUS[s]}
               </button>
             ))}
+            {isNativeApp && (
+              <button className="ghost" title="إعدادات التطبيق (الأذونات والبطارية)" aria-label="إعدادات التطبيق" onClick={openAppSettings}>⚙️</button>
+            )}
           </div>
         </div>
         <label className="row" style={{ margin: 0 }}>
@@ -248,7 +276,60 @@ export default function Dashboard({ profile }) {
         );
       })}
 
-      {me.status === 'available' && (
+      {isPrivate && (
+        <section className="stack">
+          <h2>مهماتي</h2>
+          {!tasks.length ? (
+            <div className="empty">لا توجد مهمات حالياً. ستسمع تنبيهاً عند وصول مهمة.</div>
+          ) : (
+            tasks.map((t) => {
+              const from = toPoint(t.from_lat, t.from_lng);
+              const to = toPoint(t.to_lat, t.to_lng);
+              const next = {
+                assigned: ['started', 'انطلقت'],
+                started: ['arrived', 'وصلت'],
+                arrived: ['done', 'تم التسليم'],
+              }[t.status];
+              return (
+                <section key={t.id} className="panel stack">
+                  <div className="row between">
+                    <h2>{t.title}</h2>
+                    <span className={`badge ${TASK_BADGE[t.status]}`}>{TASK_STATUS[t.status]}</span>
+                  </div>
+                  <div className="split wide">
+                    <BaseMap height={300}>
+                      <FitBounds points={[from, to]} />
+                      {from && <Marker position={from} icon={icons.vendor} />}
+                      {to && <Marker position={to} icon={icons.bank} />}
+                      {pos && <Marker position={pos} icon={icons.driver} />}
+                    </BaseMap>
+                    <div className="stack">
+                      <div><label>من</label><strong>{t.from_name || '—'}</strong></div>
+                      <div><label>إلى</label><strong>{t.to_name || '—'}</strong></div>
+                      {t.notes && <div className="muted">ملاحظة: {t.notes}</div>}
+                      {TASK_RUNNING.includes(t.status) && (
+                        <div className="notice">التتبع الكامل مفعّل حتى تضغط "تم التسليم".</div>
+                      )}
+                      {pos && to && <a href={directionsUrl(pos, to)} target="_blank" rel="noreferrer">افتح المسار</a>}
+                      {next && (
+                        <button
+                          className={t.status === 'arrived' ? 'ok' : ''}
+                          disabled={t.status === 'assigned' && !!runningTask}
+                          onClick={() => act(() => rpc('driver_set_task_status', { p_task_id: t.id, p_status: next[0] }))}
+                        >
+                          {next[1]}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              );
+            })
+          )}
+        </section>
+      )}
+
+      {me.status === 'available' && !isPrivate && (
         <section className="stack">
           <h2>عروض الطلبات</h2>
           {!offers.length ? (

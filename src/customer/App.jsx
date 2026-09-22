@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useProfile, Login } from '../shared/auth';
 import Topbar from '../shared/Topbar';
+import ThemeToggle from '../shared/ThemeToggle';
 import Stores from './pages/Stores';
 import Store from './pages/Store';
 import Checkout from './pages/Checkout';
@@ -45,6 +46,7 @@ export default function App() {
         title="اطلب من متاجر مدينتك"
         subtitle="تابع طلبك على الخريطة لحظة بلحظة حتى يصل بابك."
         allowRegister
+        themeToggle
         onDone={reload}
         error={error}
       />
@@ -59,7 +61,12 @@ export default function App() {
         tabs={[['stores', 'المتاجر'], ['checkout', `السلة (${cartCount})`], ['orders', 'طلباتي']]}
         active={active}
         onTab={go}
-        right={<span className="muted">{profile.name}</span>}
+        right={
+          <>
+            <span className="muted">{profile.name}</span>
+            <ThemeToggle className="ghost sm" />
+          </>
+        }
         onLogout={() => { logout(); setCart(EMPTY_CART); go('stores'); }}
       />
       <main className="page">

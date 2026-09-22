@@ -1,10 +1,10 @@
 /* ---------- tokens ---------- */
 :root {
-  --ink: #17201c;
-  --muted: #66716c;
-  --line: #dde3e0;
+  --ink: #1b1a17;
+  --muted: #6b665a;
+  --line: #e3dfd4;
   --paper: #ffffff;
-  --ground: #eef2f0;
+  --ground: #f3f1ec;
   --ok: #1d8a4e;
   --danger: #c8322b;
   --warn: #b7791f;
@@ -120,6 +120,11 @@ td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: to
 .leaflet-container { direction: ltr; font-family: inherit; }
 .map-pin { font-size: 26px; line-height: 38px; text-align: center; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
 .map-pin.driver { background: #fff; border: 3px solid var(--accent); border-radius: 50%; font-size: 20px; line-height: 32px; }
+.map-pin.driver.available { border-color: #1d8a4e; }
+.map-pin.driver.busy      { border-color: #e67700; }
+.map-pin.driver.offline   { border-color: #c8322b; opacity: .75; filter: grayscale(.4); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 3px solid; margin-inline-end: 6px; vertical-align: middle; }
 
 /* ---------- auth ---------- */
 .auth { min-height: 100vh; display: grid; grid-template-columns: 1fr 420px; }
@@ -131,9 +136,58 @@ td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: to
 @media (max-width: 820px) { .auth { grid-template-columns: 1fr; } .auth-brand { padding: 40px 24px; } .auth form { margin: 20px; } }
 
 
-/* ---------- لون كل واجهة ---------- */
-[data-app="customer"] { --accent: #d9480f; --accent-soft: #ffe8dc; }
-[data-app="vendor"]   { --accent: #6d28d9; --accent-soft: #ede5fd; }
-[data-app="driver"]   { --accent: #0f766e; --accent-soft: #d8efec; }
-[data-app="admin"]    { --accent: #1e3a8a; --accent-soft: #dfe7fb; }
+/* ================= هوية Quickly: أسود وذهبي ================= */
+:root {
+  --gold: #d8a811;
+  --gold-hi: #f2c230;
+  --gold-deep: #7a5a00;       /* ذهبي غامق للنصوص على خلفية فاتحة (تباين كافٍ) */
+  --accent: var(--gold);
+  --accent-ink: #111;         /* نص أسود على الأزرار الذهبية */
+  --accent-soft: #faf0cf;
+  --accent-text: var(--gold-deep);
+  --field: #fff;
+  --bar: #0b0b0b;
+  --bar-ink: #f4efe2;
+  --bar-muted: #a8a293;
+}
+
+/* الوضع الداكن (اختياري لواجهة الزبون) — الشريط العلوي أسود بالوضعين */
+[data-theme="dark"] {
+  --ink: #f4efe2;
+  --muted: #a8a293;
+  --line: #2b2a27;
+  --paper: #161513;
+  --ground: #0b0b0a;
+  --field: #1e1d1a;
+  --accent-soft: rgba(216, 168, 17, 0.16);
+  --accent-text: var(--gold-hi);
+  color-scheme: dark;
+}
+[data-theme="dark"] .error { background: #3a1512; color: #ffb4ab; }
+
+/* زر تبديل الوضع */
+.theme-toggle { font-size: 16px; line-height: 1; padding: 7px 10px; }
+.auth { position: relative; }
+.auth .theme-toggle { position: absolute; top: 16px; inset-inline-end: 16px; z-index: 2; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+
+a { color: var(--accent-text); }
+button.link { color: var(--accent-text); }
+input, select, textarea { background: var(--field); }
 .notice { background: var(--accent-soft); padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+
+/* الشريط العلوي: أسود بكل الواجهات */
+.topbar { background: var(--bar); color: var(--bar-ink); border-bottom: 2px solid var(--gold); }
+.topbar .muted { color: var(--bar-muted); }
+.topbar .tabs button { color: var(--bar-muted); }
+.topbar .tabs button.on { background: rgba(216, 168, 17, 0.18); color: var(--gold-hi); }
+.topbar button.ghost { color: var(--bar-ink); border-color: #3a3833; }
+.topbar button.ghost:hover { background: #1d1c19; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand img { height: 44px; width: auto; display: block; }
+.brand small { color: var(--bar-muted); font-size: 14px; font-weight: 500; }
+
+/* شاشة الدخول */
+.auth-brand { background: var(--bar); color: var(--bar-ink); justify-content: center; }
+.auth-brand img { width: min(420px, 90%); height: auto; margin-bottom: 18px; }
+.auth-brand h1 { color: var(--gold-hi); }
+.auth-brand p { color: var(--bar-muted); opacity: 1; }

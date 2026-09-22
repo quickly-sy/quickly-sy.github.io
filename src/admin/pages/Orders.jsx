@@ -18,7 +18,7 @@ export default function Orders() {
     if (filter === 'active') q = q.in('status', RUNNING);
     else if (filter !== 'all') q = q.eq('status', filter);
     run(q).then(setOrders).catch((e) => setError(e.message));
-    run(supabase.from('drivers').select('id, status, is_active, profile:profiles(name)').order('id')).then(setDrivers).catch(() => {});
+    run(supabase.from('drivers').select('id, status, is_active, kind, profile:profiles(name)').order('id')).then(setDrivers).catch(() => {});
   }, [filter]);
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export default function Orders() {
                         <select style={{ flex: 1, padding: 6 }} value={choice[o.id] || ''}
                                 onChange={(e) => setChoice({ ...choice, [o.id]: e.target.value })}>
                           <option value="">اختر سائقاً</option>
-                          {drivers.filter((d) => d.is_active).map((d) => (
+                          {drivers.filter((d) => d.is_active && d.kind !== 'private').map((d) => (
                             <option key={d.id} value={d.id}>{d.profile?.name} ({DRIVER_STATUS[d.status]})</option>
                           ))}
                         </select>
