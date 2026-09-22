@@ -3,6 +3,7 @@ import { Marker } from 'react-leaflet';
 import { supabase, run, rpc, subscribe } from '../shared/supabase';
 import { BaseMap, FitBounds, icons, DEFAULT_CENTER } from '../shared/map';
 import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, money, toPoint, playBeep } from '../shared/utils';
+import { watchLocation, sendLocation, isNativeApp, openAppSettings } from './location';
 
 // توفير رسائل Realtime: كل 5 ثواني أثناء التوصيل، وكل 30 ثانية وأنت فاضي
 const EVERY_ACTIVE_MS = 5000;
@@ -66,28 +67,66 @@ export default function Dashboard({ profile }) {
   const online = !!me && me.status !== 'offline';
   const hasActive = active.length > 0;
 
-  // GPS الحقيقي
+  // إبقاء الشاشة مضاءة أثناء التوصيل (Screen Wake Lock) — بدونها الموبايل يطفي الشاشة ويتوقف إرسال الموقع
+  const [awake, setAwake] = useState(false);
   useEffect(() => {
-    if (!online || !navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (p) => { if (!simRef.current) posRef.current = [p.coords.latitude, p.coords.longitude]; },
-      () => {},
-      { enableHighAccuracy: true }
-    );
-    return () => navigator.geolocation.clearWatch(id);
+    if (!hasActive || !('wakeLock' in navigator)) return;
+    let lock = null;
+    let cancelled = false;
+    const request = async () => {
+      try {
+        lock = await navigator.wakeLock.request('screen');
+        if (cancelled) return lock.release();
+        setAwake(true);
+        lock.addEventListener('release', () => setAwake(false));
+      } catch {
+        setAwake(false);
+      }
+    };
+    // المتصفح يلغي القفل عند مغادرة الصفحة، فنطلبه من جديد عند الرجوع
+    const onVisible = () => document.visibilityState === 'visible' && request();
+    request();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      lock?.release().catch(() => {});
+      setAwake(false);
+    };
+  }, [hasActive]);
+
+  // GPS الحقيقي (بالتطبيق: يستمر بالخلفية ويرسل الموقع مباشرة من هنا)
+  useEffect(() => {
+    if (!online) return;
+    return watchLocation((p) => {
+      if (simRef.current) return;
+      posRef.current = p;
+      maybeSend();
+    });
   }, [online]);
 
-  // إرسال الموقع
+  // إرسال الموقع: كل 5 ثواني أثناء التوصيل، وكل 30 ثانية وأنت فاضي
+  const lastSentRef = useRef(0);
+  const everyRef = useRef(EVERY_IDLE_MS);
+  everyRef.current = hasActive ? EVERY_ACTIVE_MS : EVERY_IDLE_MS;
+
+  function maybeSend(force = false) {
+    const p = posRef.current;
+    if (!p) return;
+    const now = Date.now();
+    if (!force && now - lastSentRef.current < everyRef.current - 500) return;
+    lastSentRef.current = now;
+    setPos([...p]);
+    sendLocation(p).catch(() => {});
+  }
+
   useEffect(() => {
     if (!online) return;
     const tick = () => {
       if (simRef.current) moveTowardTarget();
-      const p = posRef.current;
-      if (!p) return;
-      setPos([...p]);
-      supabase.rpc('driver_update_location', { p_lat: p[0], p_lng: p[1] }).then(() => {});
+      maybeSend(simRef.current);
     };
-    tick();
+    maybeSend(true);
     const timer = setInterval(tick, hasActive ? EVERY_ACTIVE_MS : EVERY_IDLE_MS);
     return () => clearInterval(timer);
   }, [online, hasActive]);
@@ -127,6 +166,19 @@ export default function Dashboard({ profile }) {
             <div className="muted">
               {online ? (hasActive ? 'موقعك يُرسل كل 5 ثواني.' : 'موقعك يُرسل كل 30 ثانية.') : 'أنت غير متصل، لن تصلك عروض.'}
             </div>
+            {isNativeApp && (
+              <div className="row" style={{ marginTop: 8 }}>
+                <span className="notice">موقعك يُتابَع حتى والشاشة مطفية.</span>
+                <button className="ghost sm" onClick={openAppSettings}>إعدادات التطبيق</button>
+              </div>
+            )}
+            {hasActive && !isNativeApp && (
+              <div className={awake ? 'notice' : 'error'} style={{ marginTop: 8 }}>
+                {awake
+                  ? 'الشاشة ستبقى مضاءة حتى تسليم الطلب. لا تغلق هذه الصفحة.'
+                  : 'أبقِ هذه الصفحة مفتوحة والشاشة مضاءة حتى التسليم، وإلا يتوقف تتبّع موقعك.'}
+              </div>
+            )}
           </div>
           <div className="row">
             {['available', 'busy', 'offline'].map((s) => (
