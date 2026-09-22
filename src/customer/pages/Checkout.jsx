@@ -1,25 +1,51 @@
-import { useEffect, useState } from 'react';
-import { Marker } from 'react-leaflet';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Circle, Marker } from 'react-leaflet';
 import { rpc } from '../../shared/supabase';
 import { BaseMap, ClickPicker, FitBounds, icons, DEFAULT_CENTER } from '../../shared/map';
+import { reverseGeocode } from '../../shared/geocode';
 import { money, toPoint } from '../../shared/utils';
 
 export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   const [point, setPoint] = useState(null);
-  const [address, setAddress] = useState('');
+  const [accuracy, setAccuracy] = useState(null); // دقة GPS بالمتر
+  const [label, setLabel] = useState(''); // اسم الشارع/الحي (تلقائي)
+  const [details, setDetails] = useState(''); // تفاصيل اختيارية: البناء، الطابق...
   const [notes, setNotes] = useState('');
   const [quote, setQuote] = useState(null);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const vendorId = cart.vendor?.id;
 
-  // رسوم التوصيل تُحسب في قاعدة البيانات حسب المسافة
+  // رسوم التوصيل حسب المسافة
   useEffect(() => {
     if (!point || !vendorId) return;
     rpc('get_delivery_quote', { p_vendor_id: vendorId, p_lat: point[0], p_lng: point[1] })
       .then(setQuote)
       .catch(() => setQuote(null));
   }, [point, vendorId]);
+
+  // اسم المكان تلقائياً (بعد توقف تحريك الدبوس بنصف ثانية)
+  useEffect(() => {
+    if (!point) return;
+    setLabel('');
+    const t = setTimeout(() => reverseGeocode(point).then(setLabel), 600);
+    return () => clearTimeout(t);
+  }, [point]);
+
+  const markerRef = useRef(null);
+  const dragHandlers = useMemo(
+    () => ({
+      dragend() {
+        const m = markerRef.current;
+        if (!m) return;
+        const { lat, lng } = m.getLatLng();
+        setPoint([lat, lng]);
+        setAccuracy(null);
+      },
+    }),
+    []
+  );
 
   if (!cart.items.length) {
     return (
@@ -34,19 +60,31 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   const subtotal = cart.items.reduce((s, i) => s + Number(i.product.price) * i.qty, 0);
 
   function locateMe() {
-    if (!navigator.geolocation) return setError('المتصفح لا يدعم تحديد الموقع، اختر موقعك من الخريطة.');
+    setError('');
+    if (!navigator.geolocation) return setError('المتصفح لا يدعم تحديد الموقع، حدد موقعك على الخريطة.');
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (p) => setPoint([p.coords.latitude, p.coords.longitude]),
-      () => setError('تعذر تحديد موقعك تلقائياً، اضغط على الخريطة لاختياره.')
+      (p) => {
+        setPoint([p.coords.latitude, p.coords.longitude]);
+        setAccuracy(Math.round(p.coords.accuracy));
+        setLocating(false);
+      },
+      (e) => {
+        setLocating(false);
+        setError(e.code === 1
+          ? 'رفضت إذن الموقع. فعّله من إعدادات المتصفح، أو حدد موقعك على الخريطة.'
+          : 'تعذر تحديد موقعك، حدده على الخريطة.');
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }
 
   async function submit() {
     setError('');
-    if (!point) return setError('اضغط على الخريطة لتحديد مكان التسليم.');
-    if (!address.trim()) return setError('اكتب العنوان التفصيلي ليصل السائق بسهولة.');
+    if (!point) return setError('حدد موقع التسليم: اضغط "موقعي الحالي" أو اختر على الخريطة.');
     setSending(true);
     try {
+      const address = [label, details.trim()].filter(Boolean).join(' — ');
       const orderId = await rpc('create_order', {
         p_vendor_id: cart.vendor.id,
         p_items: cart.items.map((i) => ({ product_id: i.product.id, quantity: i.qty })),
@@ -92,30 +130,51 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
           <strong>المجموع</strong>
           <span className="price">{money(subtotal + Number(quote?.delivery_fee || 0))}</span>
         </div>
+        <div>
+          <label>ملاحظات للمتجر (اختياري)</label>
+          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="مثلاً: الاسم على الأحرف المضيئة" />
+        </div>
       </section>
 
       <section className="panel stack">
-        <div className="row between">
-          <h3>مكان التسليم</h3>
-          <button className="ghost sm" onClick={locateMe}>📍 موقعي الحالي</button>
-        </div>
-        <p className="muted" style={{ margin: 0 }}>اضغط على الخريطة لتحديد المكان بدقة.</p>
-        <BaseMap center={vendorPoint || DEFAULT_CENTER} height={300}>
-          <ClickPicker onPick={setPoint} />
+        <h3>أين نوصل طلبك؟</h3>
+        <button onClick={locateMe} disabled={locating}>
+          {locating ? 'جاري تحديد موقعك...' : '📍 استخدم موقعي الحالي'}
+        </button>
+        <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
+          أو اضغط على الخريطة لاختيار المكان — ويمكنك سحب الدبوس 🏠 لتعديله
+        </p>
+
+        <BaseMap center={vendorPoint || DEFAULT_CENTER} height={320}>
+          <ClickPicker onPick={(p) => { setPoint(p); setAccuracy(null); }} />
           <FitBounds points={[vendorPoint, point]} />
           {vendorPoint && <Marker position={vendorPoint} icon={icons.vendor} />}
-          {point && <Marker position={point} icon={icons.home} />}
+          {point && accuracy && accuracy > 30 && (
+            <Circle center={point} radius={accuracy} pathOptions={{ color: '#d8a811', weight: 1, fillOpacity: 0.12 }} />
+          )}
+          {point && (
+            <Marker position={point} icon={icons.home} draggable eventHandlers={dragHandlers} ref={markerRef} />
+          )}
         </BaseMap>
+
+        {point && (
+          <div className="notice">
+            <strong>موقع التسليم:</strong> {label || 'جاري جلب اسم المكان...'}
+            {accuracy > 100 && (
+              <div style={{ marginTop: 4 }}>دقة الموقع ضعيفة (±{accuracy} م) — اسحب الدبوس لمكانك الصحيح.</div>
+            )}
+          </div>
+        )}
+
         <div>
-          <label>العنوان التفصيلي</label>
-          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="الحي، الشارع، البناء، الطابق" />
+          <label>تفاصيل تساعد السائق (اختياري)</label>
+          <input value={details} onChange={(e) => setDetails(e.target.value)} placeholder="رقم البناء، الطابق، علامة مميزة" />
         </div>
-        <div>
-          <label>ملاحظات للمتجر أو السائق (اختياري)</label>
-          <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </div>
+
         {error && <div className="error">{error}</div>}
-        <button onClick={submit} disabled={sending}>{sending ? 'جاري إرسال الطلب...' : 'أرسل الطلب'}</button>
+        <button onClick={submit} disabled={sending || !point}>
+          {sending ? 'جاري إرسال الطلب...' : 'أرسل الطلب'}
+        </button>
       </section>
     </div>
   );

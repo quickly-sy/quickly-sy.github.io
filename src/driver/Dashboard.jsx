@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Marker } from 'react-leaflet';
 import { supabase, run, rpc, subscribe } from '../shared/supabase';
 import { BaseMap, FitBounds, icons, DEFAULT_CENTER } from '../shared/map';
-import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, TASK_STATUS, TASK_BADGE, TASK_RUNNING, money, toPoint, playBeep } from '../shared/utils';
+import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, TASK_STATUS, TASK_BADGE, TASK_RUNNING, money, toPoint } from '../shared/utils';
+import { startAlarm, stopAlarm, isMuted, setMuted } from '../shared/alarm';
 import { watchLocation, sendLocation, isNativeApp, openAppSettings } from './location';
 
 // توفير رسائل Realtime: كل 5 ثواني أثناء التوصيل، وكل 30 ثانية وأنت فاضي
@@ -15,11 +16,14 @@ const directionsUrl = (from, to) =>
 export default function Dashboard({ profile }) {
   const [me, setMe] = useState(null);
   const [offers, setOffers] = useState([]);
+  const [declined, setDeclined] = useState([]); // عروض رفضتها (تختفي من شاشتي فقط)
+  const reportedRef = useRef(new Set()); // عروض سجّلنا أنك شاهدتها
   const [active, setActive] = useState([]);
   const [tasks, setTasks] = useState([]); // مهمات السائق الخاص
   const [pos, setPos] = useState(null);
   const [simulate, setSimulate] = useState(false);
   const [error, setError] = useState('');
+  const [muted, setMutedState] = useState(isMuted());
 
   const posRef = useRef(null);
   const simRef = useRef(false);
@@ -38,6 +42,10 @@ export default function Dashboard({ profile }) {
         isPrivate ? [] : run(supabase.from('orders').select('*, order_items(*)').eq('driver_id', m.id).in('status', ACTIVE_STATUSES).order('id')),
         isPrivate ? run(supabase.from('tasks').select('*').eq('driver_id', m.id).in('status', ['assigned', ...TASK_RUNNING]).order('id')) : [],
       ]);
+      if (!isPrivate) {
+        const d = await run(supabase.from('offer_views').select('order_id').eq('driver_id', m.id).not('declined_at', 'is', null));
+        setDeclined(d.map((x) => x.order_id));
+      }
       setMe(m);
       setOffers(o);
       setActive(a);
@@ -55,13 +63,40 @@ export default function Dashboard({ profile }) {
   // عروض جديدة + تحديث احتياطي كل 30 ثانية (لو الأدمن نقل طلباً منك)
   useEffect(() => {
     load();
-    const unsub = subscribe([{ event: '*', table: 'order_offers' }], (payload) => {
-      if (payload.eventType === 'INSERT') playBeep();
-      load();
-    });
+    const unsub = subscribe([{ event: '*', table: 'order_offers' }], load);
     const timer = setInterval(load, 30000);
     return () => { unsub(); clearInterval(timer); };
   }, [load]);
+
+  // تسجيل "شاهد العرض" — فقط والشاشة ظاهرة أمام السائق
+  const visibleOffers = offers.filter((o) => !declined.includes(o.order_id));
+  useEffect(() => {
+    const report = () => {
+      if (document.visibilityState !== 'visible') return;
+      const ids = visibleOffers.map((o) => o.order_id).filter((id) => !reportedRef.current.has(id));
+      if (!ids.length) return;
+      ids.forEach((id) => reportedRef.current.add(id));
+      supabase.rpc('driver_offer_seen', { p_order_ids: ids }).then(() => {});
+    };
+    report();
+    document.addEventListener('visibilitychange', report);
+    return () => document.removeEventListener('visibilitychange', report);
+  }, [visibleOffers.map((o) => o.order_id).join(',')]);
+
+  // يرن حتى تقبل العرض أو ترفضه — وكذلك عند وصول مهمة خاصة
+  const waitingTask = tasks.some((t) => t.status === 'assigned');
+  const needsAnswer = visibleOffers.length > 0 || waitingTask;
+  useEffect(() => {
+    if (needsAnswer && !muted) startAlarm();
+    else stopAlarm();
+    return stopAlarm;
+  }, [needsAnswer, muted]);
+
+  function toggleMute() {
+    const next = !muted;
+    setMutedState(next);
+    setMuted(next);
+  }
 
   // تغييرات طلباتي (المتجر جهّز، الأدمن عيّنني...)
   const myId = me?.id;
@@ -73,7 +108,6 @@ export default function Dashboard({ profile }) {
         { event: '*', table: 'tasks', filter: `driver_id=eq.${myId}` },
       ],
       (payload) => {
-        if (payload.table === 'tasks' && payload.eventType === 'INSERT') playBeep(); // مهمة جديدة
         load();
       }
     );
@@ -212,6 +246,9 @@ export default function Dashboard({ profile }) {
                 {DRIVER_STATUS[s]}
               </button>
             ))}
+            <button className="ghost" onClick={toggleMute} title={muted ? 'تشغيل صوت التنبيه' : 'كتم صوت التنبيه'}>
+              {muted ? '🔕' : '🔔'}
+            </button>
             {isNativeApp && (
               <button className="ghost" title="إعدادات التطبيق (الأذونات والبطارية)" aria-label="إعدادات التطبيق" onClick={openAppSettings}>⚙️</button>
             )}
@@ -331,12 +368,15 @@ export default function Dashboard({ profile }) {
 
       {me.status === 'available' && !isPrivate && (
         <section className="stack">
-          <h2>عروض الطلبات</h2>
-          {!offers.length ? (
+          <div className="row between">
+            <h2>عروض الطلبات</h2>
+            {needsAnswer && !muted && <button className="ghost sm" onClick={stopAlarm}>🔇 إسكات هذا التنبيه</button>}
+          </div>
+          {!visibleOffers.length ? (
             <div className="empty">لا توجد عروض الآن. ستسمع تنبيهاً عند وصول عرض.</div>
           ) : (
             <div className="grid">
-              {offers.map((o) => (
+              {visibleOffers.map((o) => (
                 <div key={o.order_id} className="panel stack">
                   <div className="row between">
                     <h3>#{o.order_id} {o.vendor_name}</h3>
@@ -348,7 +388,13 @@ export default function Dashboard({ profile }) {
                     <span>{o.items_count} قطع</span>
                     <span className="price">أجرة التوصيل {money(o.delivery_fee)}</span>
                   </div>
-                  <button onClick={() => act(() => rpc('driver_accept_order', { p_order_id: o.order_id }))}>قبول الطلب</button>
+                  <div className="row">
+                    <button style={{ flex: 1 }} onClick={() => act(() => rpc('driver_accept_order', { p_order_id: o.order_id }))}>قبول الطلب</button>
+                    <button className="ghost" onClick={() => {
+                      setDeclined((d) => [...d, o.order_id]);
+                      rpc('driver_decline_offer', { p_order_id: o.order_id }).catch(() => {});
+                    }}>رفض</button>
+                  </div>
                 </div>
               ))}
             </div>

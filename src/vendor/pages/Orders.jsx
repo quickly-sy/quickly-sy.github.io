@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run, rpc, subscribe } from '../../shared/supabase';
-import { STATUS, money, formatTime, playBeep } from '../../shared/utils';
+import { STATUS, money, formatTime } from '../../shared/utils';
+import { startAlarm, stopAlarm, isMuted, setMuted } from '../../shared/alarm';
 
 const ACTIONS = {
   pending: [
@@ -18,6 +19,7 @@ export default function Orders({ vendorId }) {
   const [scope, setScope] = useState('active');
   const [orders, setOrders] = useState([]);
   const [fresh, setFresh] = useState([]);
+  const [muted, setMutedState] = useState(isMuted());
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -32,7 +34,6 @@ export default function Orders({ vendorId }) {
     load();
     return subscribe([{ event: '*', table: 'orders', filter: `vendor_id=eq.${vendorId}` }], (payload) => {
       if (payload.eventType === 'INSERT') {
-        playBeep(); // 🔔
         setFresh((f) => [...f, payload.new.id]);
         document.title = `🔔 طلب جديد #${payload.new.id}`;
         setTimeout(() => (document.title = 'Quickly — المتجر'), 5000);
@@ -40,6 +41,20 @@ export default function Orders({ vendorId }) {
       load();
     });
   }, [load, vendorId]);
+
+  // يرن حتى يقبل المتجر الطلب أو يرفضه
+  const hasPending = orders.some((o) => o.status === 'pending');
+  useEffect(() => {
+    if (hasPending && !muted) startAlarm();
+    else stopAlarm();
+    return stopAlarm;
+  }, [hasPending, muted]);
+
+  function toggleMute() {
+    const next = !muted;
+    setMutedState(next);
+    setMuted(next);
+  }
 
   async function setStatus(order, to) {
     if (to === 'cancelled' && !window.confirm(`تأكيد رفض الطلب #${order.id}؟`)) return;
@@ -56,13 +71,25 @@ export default function Orders({ vendorId }) {
     <div className="stack">
       <div className="row between">
         <h2>{scope === 'active' ? 'الطلبات الحالية' : 'الطلبات السابقة'}</h2>
-        <div className="tabs">
-          <button className={scope === 'active' ? 'on' : ''} onClick={() => setScope('active')}>الحالية</button>
-          <button className={scope === 'history' ? 'on' : ''} onClick={() => setScope('history')}>السابقة</button>
+        <div className="row">
+          {hasPending && !muted && <button className="ghost sm" onClick={stopAlarm}>🔇 إسكات هذا التنبيه</button>}
+          <button className="ghost sm" onClick={toggleMute} title={muted ? 'تشغيل صوت التنبيه' : 'كتم صوت التنبيه'}>
+            {muted ? '🔕' : '🔔'}
+          </button>
+          <div className="tabs">
+            <button className={scope === 'active' ? 'on' : ''} onClick={() => setScope('active')}>الحالية</button>
+            <button className={scope === 'history' ? 'on' : ''} onClick={() => setScope('history')}>السابقة</button>
+          </div>
         </div>
       </div>
       {error && <div className="error">{error}</div>}
-      {scope === 'active' && <div className="notice">انقر على الصفحة مرة بعد فتحها حتى يسمح المتصفح بصوت التنبيه.</div>}
+      {scope === 'active' && (
+        <div className="notice">
+          {muted
+            ? 'صوت التنبيه مكتوم. اضغط 🔕 لتشغيله.'
+            : 'التنبيه يبقى يرن حتى تقبل الطلب أو ترفضه. انقر على الصفحة مرة بعد فتحها حتى يسمح المتصفح بالصوت.'}
+        </div>
+      )}
 
       {!orders.length ? (
         <div className="empty">{scope === 'active' ? 'لا توجد طلبات الآن. سيصلك تنبيه صوتي عند وصول طلب.' : 'لا توجد طلبات سابقة.'}</div>

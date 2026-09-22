@@ -14,7 +14,9 @@ export default function Orders() {
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
-    let q = supabase.from('orders').select('*, order_items(*)').order('id', { ascending: false }).limit(200);
+    let q = supabase.from('orders')
+      .select('*, order_items(*), offer_views(seen_at, declined_at, driver:drivers(id, profile:profiles(name)))')
+      .order('id', { ascending: false }).limit(200);
     if (filter === 'active') q = q.in('status', RUNNING);
     else if (filter !== 'all') q = q.eq('status', filter);
     run(q).then(setOrders).catch((e) => setError(e.message));
@@ -23,7 +25,7 @@ export default function Orders() {
 
   useEffect(() => {
     load();
-    return subscribe([{ event: '*', table: 'orders' }], load);
+    return subscribe([{ event: '*', table: 'orders' }, { event: '*', table: 'offer_views' }], load);
   }, [load]);
 
   async function act(fn) {
@@ -71,6 +73,7 @@ export default function Orders() {
                   <td><span className={`badge ${o.status}`}>{STATUS[o.status]}</span></td>
                   <td style={{ minWidth: 200 }}>
                     <div>{o.driver_name || <span className="muted">بدون سائق</span>}</div>
+                    <OfferViews views={o.offer_views} acceptedBy={o.driver_id} />
                     {ASSIGNABLE.includes(o.status) && (
                       <div className="row" style={{ marginTop: 6 }}>
                         <select style={{ flex: 1, padding: 6 }} value={choice[o.id] || ''}
@@ -95,6 +98,26 @@ export default function Orders() {
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+// من شاهد العرض ومن رفضه
+function OfferViews({ views = [], acceptedBy }) {
+  const list = views.filter((v) => v.driver?.id !== acceptedBy);
+  if (!list.length) return null;
+  const ago = (t) => {
+    const m = Math.round((Date.now() - new Date(t).getTime()) / 60000);
+    return m < 1 ? 'الآن' : m < 60 ? `${m} د` : `${Math.round(m / 60)} س`;
+  };
+  return (
+    <div className="muted" style={{ marginTop: 4 }}>
+      {list.map((v) => (
+        <div key={v.driver?.id}>
+          {v.declined_at ? '✖ رفض: ' : '👁 شاهد ولم يقبل: '}
+          {v.driver?.profile?.name} ({ago(v.declined_at || v.seen_at)})
+        </div>
+      ))}
     </div>
   );
 }
