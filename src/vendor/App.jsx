@@ -27,13 +27,18 @@ export default function App() {
 
   if (loading) return <div className="page muted">جاري التحميل...</div>;
   if (!profile)
-    return <Login title="لوحة المتجر" subtitle="استقبل الطلبات، جهّزها، وسلّمها للسائق." onDone={reload} error={error} />;
+    return <Login
+        title="متجرك على Quickly"
+        subtitle="طلبات تصلك فوراً، وتجهيز منظّم، وسائق عند الباب."
+        onDone={reload}
+        error={error}
+      />;
   if (!store) return <div className="page muted">جاري تحميل المتجر...</div>;
 
   return (
     <>
       <Topbar
-        subtitle={store.name}
+        subtitle={`${store.name}${store.rating_count ? ` ★ ${Number(store.rating_avg).toFixed(1)}` : ''}`}
         tabs={[['orders', 'الطلبات'], ['products', 'المنتجات']]}
         active={tab}
         onTab={setTab}

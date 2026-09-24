@@ -4,6 +4,16 @@ import { supabase, run, rpc, subscribe } from '../shared/supabase';
 import { BaseMap, FitBounds, icons, DEFAULT_CENTER } from '../shared/map';
 import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, TASK_STATUS, TASK_BADGE, TASK_RUNNING, money, toPoint } from '../shared/utils';
 import { startAlarm, stopAlarm, isMuted, setMuted } from '../shared/alarm';
+import { Rating } from '../shared/Stars';
+
+// رسائل تظهر لكابتن التوصيل بعد كل تسليم
+const CHEERS = [
+  'تسليم نظيف 👏',
+  'أحسنت، زبون آخر وصله طلبه في وقته 🚀',
+  'شغل ممتاز، استمر 💪',
+  'طلب آخر في الطريق الصحيح ✅',
+  'سرعتك هي سمعة Quickly 🏅',
+];
 import { watchLocation, sendLocation, isNativeApp, openAppSettings } from './location';
 
 // توفير رسائل Realtime: كل 5 ثواني أثناء التوصيل، وكل 30 ثانية وأنت فاضي
@@ -24,6 +34,7 @@ export default function Dashboard({ profile }) {
   const [simulate, setSimulate] = useState(false);
   const [error, setError] = useState('');
   const [muted, setMutedState] = useState(isMuted());
+  const [cheer, setCheer] = useState(null); // { text, count } بعد كل تسليم
 
   const posRef = useRef(null);
   const simRef = useRef(false);
@@ -213,6 +224,22 @@ export default function Dashboard({ profile }) {
     load();
   }
 
+  // بعد تسليم الطلب: رسالة تحفيزية + عدد ما سلّمته اليوم
+  async function deliver(order) {
+    try {
+      await rpc('driver_set_order_status', { p_order_id: order.id, p_status: 'delivered' });
+      const since = new Date();
+      since.setHours(0, 0, 0, 0);
+      const rows = await run(
+        supabase.from('orders').select('id').eq('driver_id', me.id).eq('status', 'delivered').gte('delivered_at', since.toISOString())
+      ).catch(() => []);
+      setCheer({ text: CHEERS[Math.floor(Math.random() * CHEERS.length)], count: rows.length || 1 });
+    } catch (e) {
+      alert(e.message);
+    }
+    load();
+  }
+
   if (error && !me) return <div className="error">{error}</div>;
   if (!me) return <p className="muted">جاري التحميل...</p>;
 
@@ -220,10 +247,21 @@ export default function Dashboard({ profile }) {
     <div className="stack">
       {!me.is_active && <div className="error">حسابك موقوف حالياً. تواصل مع إدارة Quickly.</div>}
 
+      {cheer && (
+        <section className="panel stack" style={{ textAlign: 'center' }}>
+          <h2>{cheer.text}</h2>
+          <p className="muted" style={{ margin: 0 }}>سلّمت اليوم {cheer.count} طلب</p>
+          <button className="ghost" onClick={() => setCheer(null)}>متابعة</button>
+        </section>
+      )}
+
       <section className="panel stack">
         <div className="row between">
           <div>
-            <h3>حالتك الآن: <span className={`badge ${me.status}`}>{DRIVER_STATUS[me.status]}</span></h3>
+            <h3 className="row" style={{ gap: 10 }}>
+              <span>حالتك الآن: <span className={`badge ${me.status}`}>{DRIVER_STATUS[me.status]}</span></span>
+              <Rating avg={me.rating_avg} count={me.rating_count} />
+            </h3>
             <div className="muted">
               {!online && 'أنت غير متصل، لن تصلك طلبات'}
               {online && runningTask && 'تتبع كامل: موقعك يُرسل كل 5 ثواني ويُسجَّل المسار.'}
@@ -298,9 +336,7 @@ export default function Dashboard({ profile }) {
                 </div>
                 {pos && target && <a href={directionsUrl(pos, target)} target="_blank" rel="noreferrer">افتح المسار في OpenStreetMap</a>}
                 {o.status === 'picked' ? (
-                  <button className="ok" onClick={() => act(() => rpc('driver_set_order_status', { p_order_id: o.id, p_status: 'delivered' }))}>
-                    تم التسليم للزبون
-                  </button>
+                  <button className="ok" onClick={() => deliver(o)}>تم التسليم للزبون</button>
                 ) : (
                   <button disabled={o.status !== 'ready'}
                           onClick={() => act(() => rpc('driver_set_order_status', { p_order_id: o.id, p_status: 'picked' }))}>

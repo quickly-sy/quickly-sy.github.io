@@ -43,8 +43,8 @@ export default function App() {
   if (!profile)
     return (
       <Login
-        title="اطلب من متاجر مدينتك"
-        subtitle="تابع طلبك على الخريطة لحظة بلحظة حتى يصل بابك."
+        title="طلبك لباب بيتك — لحظة بلحظة"
+        subtitle="اطلب من متاجر مدينتك، وتابعه على الخريطة من لحظة التأكيد حتى الاستلام."
         allowRegister
         themeToggle
         onDone={reload}

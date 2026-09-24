@@ -7,7 +7,12 @@ export default function App() {
 
   if (loading) return <div className="page muted">جاري التحميل...</div>;
   if (!profile)
-    return <Login title="تطبيق السائق" subtitle="استلم العروض، وصّل الطلبات، وموقعك يُرسل تلقائياً." onDone={reload} error={error} />;
+    return <Login
+        title="أسطول Quickly"
+        subtitle="طلبات واضحة — مسار مباشر — تسليم أسرع"
+        onDone={reload}
+        error={error}
+      />;
 
   return (
     <>

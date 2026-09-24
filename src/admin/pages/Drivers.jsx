@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase, run, rpc } from '../../shared/supabase';
 import { normalizePhone } from '../../shared/auth';
 import { DRIVER_STATUS } from '../../shared/utils';
+import { Rating } from '../../shared/Stars';
 
 const VEHICLES = { motorcycle: 'دراجة نارية', car: 'سيارة', bicycle: 'دراجة هوائية' };
 
@@ -52,7 +53,7 @@ export default function Drivers() {
 
       <section className="panel table-wrap">
         <table>
-          <thead><tr><th>السائق</th><th>المركبة</th><th>النوع</th><th>الحالة</th><th>آخر موقع</th><th>مفعّل</th><th></th></tr></thead>
+          <thead><tr><th>السائق</th><th>المركبة</th><th>النوع</th><th>التقييم</th><th>الحالة</th><th>آخر موقع</th><th>مفعّل</th><th></th></tr></thead>
           <tbody>
             {drivers.map((d) => (
               <tr key={d.id}>
@@ -65,6 +66,7 @@ export default function Drivers() {
                     {d.kind === 'private' ? 'خاص 🔒' : 'توصيل'}
                   </button>
                 </td>
+                <td><Rating avg={d.rating_avg} count={d.rating_count} className="" /></td>
                 <td><span className={`badge ${d.status}`}>{DRIVER_STATUS[d.status]}</span></td>
                 <td className="muted">{d.location_at ? new Date(d.location_at).toLocaleTimeString('ar') : '—'}</td>
                 <td><button className={`sm ${d.is_active ? 'ok' : 'danger'}`} onClick={() => update(d, { is_active: !d.is_active })}>{d.is_active ? 'مفعّل' : 'موقوف'}</button></td>

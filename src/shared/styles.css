@@ -166,9 +166,15 @@ td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: to
 [data-theme="dark"] .error { background: #3a1512; color: #ffb4ab; }
 
 /* زر تبديل الوضع */
+.star { background: none; border: 0; padding: 0 2px; line-height: 1; cursor: pointer; }
+.star:disabled { cursor: default; opacity: 1; }
+.star:hover { background: none; filter: none; }
 .theme-toggle { font-size: 16px; line-height: 1; padding: 7px 10px; }
 .auth { position: relative; }
-.auth .theme-toggle { position: absolute; top: 16px; inset-inline-end: 16px; z-index: 2; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.auth .star { background: none; border: 0; padding: 0 2px; line-height: 1; cursor: pointer; }
+.star:disabled { cursor: default; opacity: 1; }
+.star:hover { background: none; filter: none; }
+.theme-toggle { position: absolute; top: 16px; inset-inline-end: 16px; z-index: 2; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
 
 a { color: var(--accent-text); }
 button.link { color: var(--accent-text); }

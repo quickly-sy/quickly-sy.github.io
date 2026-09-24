@@ -3,6 +3,7 @@ import { Marker, Popup } from 'react-leaflet';
 import { supabase, run, rpc, subscribe } from '../../shared/supabase';
 import { BaseMap, FitBounds, icons } from '../../shared/map';
 import { STATUS, ACTIVE_STATUSES, money, toPoint } from '../../shared/utils';
+import { Stars } from '../../shared/Stars';
 
 const STEPS = ['confirmed', 'preparing', 'ready', 'picked', 'delivered'];
 
@@ -46,6 +47,8 @@ export default function Track({ orderId, onBack }) {
 
   if (error) return <div className="error">{error}</div>;
   if (!order) return <p className="muted">جاري التحميل...</p>;
+
+  if (order.status === 'delivered') return <Delivered order={order} onBack={onBack} />;
 
   const vendorPoint = toPoint(order.vendor_lat, order.vendor_lng);
   const homePoint = toPoint(order.customer_lat, order.customer_lng);
@@ -101,6 +104,73 @@ export default function Track({ orderId, onBack }) {
           {order.status === 'pending' && <button className="danger" onClick={cancel}>إلغاء الطلب</button>}
         </section>
       </div>
+    </div>
+  );
+}
+
+// بعد الاستلام: شكراً + تقييم المتجر وكابتن التوصيل
+function Delivered({ order, onBack }) {
+  const [vendorStars, setVendorStars] = useState(0);
+  const [driverStars, setDriverStars] = useState(0);
+  const [comment, setComment] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    run(supabase.from('ratings').select('*').eq('order_id', order.id).maybeSingle())
+      .then((r) => {
+        if (!r) return;
+        setVendorStars(r.vendor_stars || 0);
+        setDriverStars(r.driver_stars || 0);
+        setComment(r.comment || '');
+        setSaved(true);
+      })
+      .catch(() => {});
+  }, [order.id]);
+
+  async function send() {
+    setError('');
+    if (!vendorStars && !driverStars) return setError('اختر عدد النجوم أولاً');
+    setBusy(true);
+    try {
+      await rpc('customer_rate_order', {
+        p_order_id: order.id,
+        p_vendor_stars: vendorStars || null,
+        p_driver_stars: driverStars || null,
+        p_comment: comment || null,
+      });
+      setSaved(true);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="stack">
+      <button className="ghost sm" onClick={onBack}>كل طلباتي</button>
+      <section className="panel stack" style={{ textAlign: 'center' }}>
+        <h2>وصل طلبك 🎉</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          طلب #{order.id} من {order.vendor_name} — {money(Number(order.total) + Number(order.delivery_fee))}
+        </p>
+      </section>
+
+      <section className="panel stack">
+        <h3>{saved ? 'شكراً لتقييمك' : 'كيف كانت تجربتك؟'}</h3>
+        <Stars label={`المتجر: ${order.vendor_name}`} value={vendorStars} onChange={setVendorStars} />
+        {order.driver_name && (
+          <Stars label={`كابتن التوصيل: ${order.driver_name}`} value={driverStars} onChange={setDriverStars} />
+        )}
+        <div>
+          <label>ملاحظة (اختياري)</label>
+          <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="ما الذي أعجبك أو يمكن تحسينه؟" />
+        </div>
+        {error && <div className="error">{error}</div>}
+        <button onClick={send} disabled={busy}>{busy ? 'جاري الإرسال...' : saved ? 'تعديل التقييم' : 'أرسل التقييم'}</button>
+      </section>
     </div>
   );
 }

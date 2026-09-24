@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase, run } from '../../shared/supabase';
+import { Rating } from '../../shared/Stars';
 
 const CATEGORY_ICON = { هدايا: '🎁', مطاعم: '🍽️', بقالة: '🛒', صيدلية: '💊', حلويات: '🍰' };
 
@@ -11,7 +12,7 @@ export default function Stores({ onOpen }) {
 
   useEffect(() => {
     run(
-      supabase.from('vendors').select('id, name, category, address, is_open')
+      supabase.from('vendors').select('id, name, category, address, is_open, rating_avg, rating_count')
         .order('is_open', { ascending: false }).order('name')
     ).then(setVendors).catch((e) => setError(e.message));
   }, []);
@@ -42,7 +43,10 @@ export default function Stores({ onOpen }) {
                 <h3>{v.name}</h3>
                 <span className={`badge ${v.is_open ? 'open' : 'closed'}`}>{v.is_open ? 'مفتوح' : 'مغلق'}</span>
               </div>
-              <div className="muted">{[v.category, v.address].filter(Boolean).join('، ')}</div>
+              <div className="row between">
+                <span className="muted">{[v.category, v.address].filter(Boolean).join('، ')}</span>
+                <Rating avg={v.rating_avg} count={v.rating_count} />
+              </div>
             </button>
           ))}
         </div>

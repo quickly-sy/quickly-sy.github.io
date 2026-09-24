@@ -4,6 +4,7 @@ import { supabase, run, rpc } from '../../shared/supabase';
 import { normalizePhone } from '../../shared/auth';
 import { BaseMap, ClickPicker, icons } from '../../shared/map';
 import { toPoint } from '../../shared/utils';
+import { Rating } from '../../shared/Stars';
 
 const EMPTY = { phone: '', name: '', category: '', address: '', lat: null, lng: null };
 
@@ -87,12 +88,13 @@ export default function Vendors() {
 
       <section className="panel table-wrap">
         <table>
-          <thead><tr><th>المتجر</th><th>الحساب</th><th>منتجات</th><th>مفتوح</th><th>مفعّل</th><th></th></tr></thead>
+          <thead><tr><th>المتجر</th><th>الحساب</th><th>التقييم</th><th>منتجات</th><th>مفتوح</th><th>مفعّل</th><th></th></tr></thead>
           <tbody>
             {vendors.map((v) => (
               <tr key={v.id}>
                 <td><strong>{v.name}</strong><div className="muted">{[v.category, v.address].filter(Boolean).join('، ')}</div></td>
                 <td>{v.owner?.name}<div className="muted" dir="ltr" style={{ textAlign: 'right' }}>{v.owner?.phone}</div></td>
+                <td><Rating avg={v.rating_avg} count={v.rating_count} className="" /></td>
                 <td>{v.products?.[0]?.count ?? 0}</td>
                 <td><button className={`sm ${v.is_open ? 'ok' : 'ghost'}`} onClick={() => toggle(v, 'is_open')}>{v.is_open ? 'مفتوح' : 'مغلق'}</button></td>
                 <td><button className={`sm ${v.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(v, 'is_active')}>{v.is_active ? 'مفعّل' : 'موقوف'}</button></td>

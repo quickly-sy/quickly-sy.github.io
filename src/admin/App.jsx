@@ -23,7 +23,12 @@ export default function App() {
 
   if (loading) return <div className="page muted">جاري التحميل...</div>;
   if (!profile)
-    return <Login title="إدارة Quickly" subtitle="المتاجر، السائقون، وكل الطلبات في مكان واحد." onDone={reload} error={error} />;
+    return <Login
+        title="غرفة التحكم"
+        subtitle="المتاجر، والسائقون، والطلبات، وكل شيء أمامك لحظة بلحظة."
+        onDone={reload}
+        error={error}
+      />;
 
   const Page = TABS.find((t) => t[0] === tab)[2];
 
