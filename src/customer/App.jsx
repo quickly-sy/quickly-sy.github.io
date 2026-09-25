@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useProfile, Login } from '../shared/auth';
 import Topbar from '../shared/Topbar';
 import ThemeToggle from '../shared/ThemeToggle';
-import { SaverToggle } from '../shared/saver';
+import SaverToggle from '../shared/SaverToggle';
 import Stores from './pages/Stores';
 import Store from './pages/Store';
 import Checkout from './pages/Checkout';
