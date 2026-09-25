@@ -284,3 +284,12 @@ input, select, textarea { background: var(--field); }
 @media (max-width: 380px) {
   .topbar-actions > .muted { display: none; }
 }
+
+/* ---------- نافذة منبثقة بسيطة ---------- */
+.modal-back {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0, 0, 0, .45);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal { width: min(420px, 100%); }
+.dimmed { opacity: .55; }

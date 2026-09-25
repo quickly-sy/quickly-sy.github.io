@@ -7,11 +7,13 @@ import Vendors from './pages/Vendors';
 import Drivers from './pages/Drivers';
 import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
+import Categories from './pages/Categories';
 
 const TABS = [
   ['dashboard', 'نظرة عامة', Dashboard],
   ['orders', 'الطلبات', Orders],
   ['vendors', 'المتاجر', Vendors],
+  ['categories', 'التصنيفات', Categories],
   ['drivers', 'السائقون', Drivers],
   ['tasks', 'المهام الخاصة', Tasks],
   ['settings', 'الإعدادات', Settings],
