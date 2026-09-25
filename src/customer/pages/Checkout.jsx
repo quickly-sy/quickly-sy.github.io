@@ -4,6 +4,7 @@ import { rpc } from '../../shared/supabase';
 import { BaseMap, ClickPicker, FitBounds, icons, DEFAULT_CENTER } from '../../shared/map';
 import { reverseGeocode } from '../../shared/geocode';
 import { money, toPoint } from '../../shared/utils';
+import ActionBar from '../../shared/ActionBar';
 
 export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   const [point, setPoint] = useState(null);
@@ -172,10 +173,17 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
         </div>
 
         {error && <div className="error">{error}</div>}
-        <button onClick={submit} disabled={sending || !point}>
-          {sending ? 'جاري إرسال الطلب...' : 'أرسل الطلب'}
-        </button>
       </section>
+
+      <ActionBar>
+        <div className="action-info">
+          <span className="muted">الإجمالي</span>
+          <span className="price">{money(subtotal + Number(quote?.delivery_fee || 0))}</span>
+        </div>
+        <button onClick={submit} disabled={sending || !point}>
+          {sending ? 'جاري الإرسال...' : point ? 'أرسل الطلب' : 'حدد الموقع أولاً'}
+        </button>
+      </ActionBar>
     </div>
   );
 }

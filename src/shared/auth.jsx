@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run } from './supabase';
+import { readCache, writeCache, clearCache } from './cache';
 import { LOGIN_EMAIL_BASE } from './config';
 import logo from './assets/quickly-logo.webp';
 import ThemeToggle from './ThemeToggle';
@@ -26,38 +27,57 @@ export function phoneToEmail(phone) {
 
 // يحمّل الحساب الحالي ويتأكد إن دوره يناسب هذه الواجهة
 export function useProfile(role) {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // نبدأ من آخر حساب محفوظ حتى تظهر الواجهة فوراً، ثم نتحقق بالخلفية
+  const cacheKey = `profile:${role}`;
+  const [profile, setProfile] = useState(() => readCache(cacheKey));
+  const [loading, setLoading] = useState(() => readCache(cacheKey) === null);
   const [error, setError] = useState('');
 
   const reload = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
+      clearCache('profile:');
       setProfile(null);
       setLoading(false);
       return;
     }
-    const { data } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+    const { data, error: qError } = await supabase
+      .from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+
+    // انقطاع شبكة أو بطء: نُبقي المستخدم داخلاً ونكمل بالنسخة المحفوظة
+    if (qError) {
+      if (!readCache(cacheKey)) setError('تعذر الاتصال، سنحاول مجدداً');
+      setLoading(false);
+      return;
+    }
+
     if (!data || data.role !== role) {
       await supabase.auth.signOut();
+      clearCache('profile:');
       setProfile(null);
       setError(data ? `هذا الحساب ليس حساب ${ROLE_LABEL[role]}` : 'تعذر تحميل الحساب');
     } else {
       setProfile(data);
+      writeCache(cacheKey, data);
       setError('');
     }
     setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
   useEffect(() => {
     reload();
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') setProfile(null);
+      if (event === 'SIGNED_OUT') {
+        clearCache('profile:');
+        setProfile(null);
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, [reload]);
 
   const logout = async () => {
+    clearCache();
     await supabase.auth.signOut();
     setProfile(null);
   };
@@ -103,13 +123,17 @@ export function Login({ title, subtitle, allowRegister = false, onDone, error: o
 
   return (
     <div className="auth">
-      {themeToggle && <ThemeToggle className="ghost" />}
       <div className="auth-brand">
         <img src={logo} alt="Quickly" />
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
       <form className="panel stack" onSubmit={submit}>
+        {themeToggle && (
+          <div className="row" style={{ justifyContent: 'flex-end' }}>
+            <ThemeToggle className="ghost sm" />
+          </div>
+        )}
         {mode === 'register' && (
           <div>
             <label>الاسم</label>

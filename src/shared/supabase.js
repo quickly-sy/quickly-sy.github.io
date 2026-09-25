@@ -6,6 +6,17 @@ export const configMissing = SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_K
 // كل واجهة تحفظ جلستها بمفتاح مختلف، فتقدر تفتح الأربعة بنفس المتصفح بحسابات مختلفة
 const app = document.documentElement.dataset.app || 'app';
 
+// فتح الاتصال بالخادم من أول لحظة، قبل أول استعلام — يوفّر ثانية أو أكثر على الشبكات البطيئة
+if (!configMissing && typeof document !== 'undefined') {
+  for (const rel of ['preconnect', 'dns-prefetch']) {
+    const l = document.createElement('link');
+    l.rel = rel;
+    l.href = SUPABASE_URL;
+    if (rel === 'preconnect') l.crossOrigin = 'anonymous';
+    document.head.appendChild(l);
+  }
+}
+
 export const supabase = createClient(configMissing ? 'https://placeholder.supabase.co' : SUPABASE_URL, SUPABASE_KEY, {
   auth: { storageKey: `quickly-${app}-auth`, persistSession: true, autoRefreshToken: true },
 });

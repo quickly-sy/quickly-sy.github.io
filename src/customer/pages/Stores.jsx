@@ -1,39 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase, run } from '../../shared/supabase';
+import { useCached } from '../../shared/cache';
 import { Rating } from '../../shared/Stars';
 
 const CATEGORY_ICON = { هدايا: '🎁', مطاعم: '🍽️', بقالة: '🛒', صيدلية: '💊', حلويات: '🍰' };
 
 export default function Stores({ onOpen }) {
-  const [vendors, setVendors] = useState(null);
   const [category, setCategory] = useState('الكل');
   const [q, setQ] = useState('');
-  const [error, setError] = useState('');
 
-  useEffect(() => {
+  const { data: vendors, error, stale, loading } = useCached('vendors', () =>
     run(
-      supabase.from('vendors').select('id, name, category, address, is_open, rating_avg, rating_count')
-        .order('is_open', { ascending: false }).order('name')
-    ).then(setVendors).catch((e) => setError(e.message));
-  }, []);
+      supabase
+        .from('vendors')
+        .select('id, name, category, address, is_open, rating_avg, rating_count')
+        .order('is_open', { ascending: false })
+        .order('name')
+    )
+  );
 
-  if (error) return <div className="error">{error}</div>;
-  if (!vendors) return <p className="muted">جاري تحميل المتاجر...</p>;
+  if (loading) return <StoresSkeleton />;
+  if (error && !vendors) return <div className="error">{error}</div>;
 
   const categories = ['الكل', ...new Set(vendors.map((v) => v.category).filter(Boolean))];
-  const list = vendors.filter((v) => (category === 'الكل' || v.category === category) && v.name.includes(q.trim()));
+  const list = vendors.filter(
+    (v) => (category === 'الكل' || v.category === category) && v.name.includes(q.trim())
+  );
 
   return (
     <div className="stack">
       <div className="row between">
-        <h2>المتاجر</h2>
+        <h2>المتاجر {stale && <span className="dot-pulse" aria-label="جاري التحديث" />}</h2>
         <input style={{ maxWidth: 280 }} placeholder="ابحث باسم المتجر" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
+
       <div className="tabs">
         {categories.map((c) => (
           <button key={c} className={category === c ? 'on' : ''} onClick={() => setCategory(c)}>{c}</button>
         ))}
       </div>
+
       {list.length ? (
         <div className="grid">
           {list.map((v) => (
@@ -53,6 +59,30 @@ export default function Stores({ onOpen }) {
       ) : (
         <div className="empty">لا يوجد متجر بهذا الاسم أو التصنيف.</div>
       )}
+    </div>
+  );
+}
+
+// هيكل مبدئي: يظهر فوراً بدل شاشة انتظار فارغة
+function StoresSkeleton() {
+  return (
+    <div className="stack" aria-busy="true">
+      <div className="row between">
+        <h2>المتاجر</h2>
+        <span className="sk" style={{ width: 200, height: 40 }} />
+      </div>
+      <div className="row">
+        {[60, 70, 55].map((w, i) => <span key={i} className="sk" style={{ width: w, height: 30 }} />)}
+      </div>
+      <div className="grid">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="panel stack">
+            <span className="sk thumb" />
+            <span className="sk" style={{ width: '60%', height: 18 }} />
+            <span className="sk" style={{ width: '85%', height: 14 }} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

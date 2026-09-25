@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { supabase, run, subscribe } from '../../shared/supabase';
+import { readCache, writeCache } from '../../shared/cache';
 import { STATUS, money, formatTime } from '../../shared/utils';
 
 export default function Orders({ profile, onTrack }) {
-  const [orders, setOrders] = useState(null);
+  const [orders, setOrders] = useState(() => readCache(`orders:${profile.id}`));
 
   useEffect(() => {
     const load = () =>
@@ -11,7 +12,9 @@ export default function Orders({ profile, onTrack }) {
         supabase.from('orders')
           .select('id, status, total, delivery_fee, vendor_name, created_at, order_items(id)')
           .eq('customer_id', profile.id).order('id', { ascending: false }).limit(50)
-      ).then(setOrders).catch(() => setOrders([]));
+      )
+        .then((rows) => { setOrders(rows); writeCache(`orders:${profile.id}`, rows); })
+        .catch(() => setOrders((o) => o || []));
     load();
     return subscribe([{ event: '*', table: 'orders', filter: `customer_id=eq.${profile.id}` }], load);
   }, [profile.id]);
