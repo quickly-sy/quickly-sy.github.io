@@ -165,16 +165,11 @@ td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: to
 }
 [data-theme="dark"] .error { background: #3a1512; color: #ffb4ab; }
 
-/* زر تبديل الوضع */
+/* نجوم التقييم وزر تبديل الوضع */
 .star { background: none; border: 0; padding: 0 2px; line-height: 1; cursor: pointer; }
 .star:disabled { cursor: default; opacity: 1; }
 .star:hover { background: none; filter: none; }
 .theme-toggle { font-size: 16px; line-height: 1; padding: 7px 10px; }
-.auth { position: relative; }
-.auth .star { background: none; border: 0; padding: 0 2px; line-height: 1; cursor: pointer; }
-.star:disabled { cursor: default; opacity: 1; }
-.star:hover { background: none; filter: none; }
-.theme-toggle { position: absolute; top: 16px; inset-inline-end: 16px; z-index: 2; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
 
 a { color: var(--accent-text); }
 button.link { color: var(--accent-text); }
@@ -254,7 +249,16 @@ input, select, textarea { background: var(--field); }
 }
 
 /* ---------- وضع التوفير ---------- */
-.theme-toggle.saver-on { background: var(--accent-soft); border-color: var(--accent); }
+/* زر توفير البيانات */
+.saver-toggle { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.saver-toggle .saver-label { font-size: 13px; }
+.saver-toggle.saver-on { background: var(--accent-soft); border-color: var(--accent); }
+/* داخل الشريط الأسود: تظليل ذهبي شفاف حتى يبقى النص واضحاً */
+.topbar .saver-toggle.saver-on { background: rgba(216, 168, 17, .22); border-color: var(--gold); color: var(--gold-hi); }
+/* على الشاشات الضيقة نُخفي الكلمة ونُبقي الرمز */
+@media (max-width: 480px) {
+  .saver-toggle .saver-label { display: none; }
+}
 .thumb-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   border: 1px dashed var(--line); background: var(--ground); color: var(--muted);
@@ -262,3 +266,21 @@ input, select, textarea { background: var(--field); }
 }
 .thumb-btn small { font-size: 12px; font-weight: 500; }
 .thumb-btn:hover { border-color: var(--accent); filter: none; }
+
+/* مجموعة أزرار الشريط العلوي: تبقى سطراً واحداً ولا تنكسر */
+.topbar-actions {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: nowrap; flex: 0 0 auto; margin-inline-start: auto;
+}
+.topbar-actions > .muted {
+  max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.topbar-actions button { flex-shrink: 0; }
+@media (max-width: 760px) {
+  .topbar-actions { gap: 6px; }
+  .topbar-actions > .muted { max-width: 80px; font-size: 12px; }
+  .topbar-actions button { padding: 5px 9px; }
+}
+@media (max-width: 380px) {
+  .topbar-actions > .muted { display: none; }
+}

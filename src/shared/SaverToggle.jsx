@@ -5,12 +5,13 @@ export default function SaverToggle({ className = 'ghost sm' }) {
   return (
     <button
       type="button"
-      className={`theme-toggle ${className} ${on ? 'saver-on' : ''}`}
+      className={`saver-toggle ${className} ${on ? 'saver-on' : ''}`}
       onClick={() => set(!on)}
-      title={on ? 'وضع التوفير مفعّل — اضغط للإيقاف' : 'تفعيل وضع التوفير (بيانات أقل)'}
+      title={on ? 'توفير البيانات مفعّل — اضغط للإيقاف' : 'تفعيل توفير البيانات'}
       aria-pressed={on}
     >
-      🪶
+      <span aria-hidden="true">⚡</span>
+      <span className="saver-label">توفير البيانات</span>
     </button>
   );
 }

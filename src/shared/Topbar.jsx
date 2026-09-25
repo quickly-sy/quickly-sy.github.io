@@ -17,8 +17,10 @@ export default function Topbar({ subtitle, tabs = [], active, onTab, right, onLo
         </nav>
       )}
       <div className="spacer" />
-      {right}
-      <button className="ghost sm" onClick={onLogout}>خروج</button>
+      <div className="topbar-actions">
+        {right}
+        <button className="ghost sm" onClick={onLogout}>خروج</button>
+      </div>
     </header>
   );
 }
