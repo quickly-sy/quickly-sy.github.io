@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, Marker } from 'react-leaflet';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { rpc } from '../../shared/supabase';
-import { BaseMap, ClickPicker, FitBounds, icons, DEFAULT_CENTER } from '../../shared/map';
 import { reverseGeocode } from '../../shared/geocode';
 import { money, toPoint } from '../../shared/utils';
 import ActionBar from '../../shared/ActionBar';
+import { useSaver } from '../../shared/saver';
+
+const MapView = lazy(() => import('../../shared/MapView'));
 
 export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   const [point, setPoint] = useState(null);
@@ -16,6 +17,8 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const [saver] = useSaver();
+  const [showMap, setShowMap] = useState(!saver);
   const vendorId = cart.vendor?.id;
 
   // رسوم التوصيل حسب المسافة
@@ -33,20 +36,6 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
     const t = setTimeout(() => reverseGeocode(point).then(setLabel), 600);
     return () => clearTimeout(t);
   }, [point]);
-
-  const markerRef = useRef(null);
-  const dragHandlers = useMemo(
-    () => ({
-      dragend() {
-        const m = markerRef.current;
-        if (!m) return;
-        const { lat, lng } = m.getLatLng();
-        setPoint([lat, lng]);
-        setAccuracy(null);
-      },
-    }),
-    []
-  );
 
   if (!cart.items.length) {
     return (
@@ -146,17 +135,30 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
           أو اضغط على الخريطة لاختيار المكان — ويمكنك سحب الدبوس 🏠 لتعديله
         </p>
 
-        <BaseMap center={vendorPoint || DEFAULT_CENTER} height={320}>
-          <ClickPicker onPick={(p) => { setPoint(p); setAccuracy(null); }} />
-          <FitBounds points={[vendorPoint, point]} />
-          {vendorPoint && <Marker position={vendorPoint} icon={icons.vendor} />}
-          {point && accuracy && accuracy > 30 && (
-            <Circle center={point} radius={accuracy} pathOptions={{ color: '#d8a811', weight: 1, fillOpacity: 0.12 }} />
-          )}
-          {point && (
-            <Marker position={point} icon={icons.home} draggable eventHandlers={dragHandlers} ref={markerRef} />
-          )}
-        </BaseMap>
+        {showMap ? (
+          <Suspense fallback={<span className="sk" style={{ height: 320 }} />}>
+            <MapView
+              height={320}
+              center={vendorPoint || undefined}
+              fit={[vendorPoint, point]}
+              onPick={(p) => { setPoint(p); setAccuracy(null); }}
+              circle={point && accuracy > 30 ? { center: point, radius: accuracy } : undefined}
+              markers={[
+                vendorPoint && { point: vendorPoint, icon: 'vendor' },
+                point && {
+                  point,
+                  icon: 'home',
+                  draggable: true,
+                  onDragEnd: (p) => { setPoint(p); setAccuracy(null); },
+                },
+              ]}
+            />
+          </Suspense>
+        ) : (
+          <button type="button" className="ghost" onClick={() => setShowMap(true)}>
+            🗺️ افتح الخريطة لتحديد الموقع
+          </button>
+        )}
 
         {point && (
           <div className="notice">

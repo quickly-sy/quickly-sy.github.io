@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useProfile, Login } from '../shared/auth';
 import Topbar from '../shared/Topbar';
 import ThemeToggle from '../shared/ThemeToggle';
+import { SaverToggle } from '../shared/saver';
 import Stores from './pages/Stores';
 import Store from './pages/Store';
 import Checkout from './pages/Checkout';
@@ -64,6 +65,7 @@ export default function App() {
         right={
           <>
             <span className="muted">{profile.name}</span>
+            <SaverToggle />
             <ThemeToggle className="ghost sm" />
           </>
         }

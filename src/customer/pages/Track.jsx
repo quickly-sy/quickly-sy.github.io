@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Marker, Popup } from 'react-leaflet';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { supabase, run, rpc, subscribe } from '../../shared/supabase';
-import { BaseMap, FitBounds, icons } from '../../shared/map';
 import { STATUS, ACTIVE_STATUSES, money, toPoint } from '../../shared/utils';
 import { Stars } from '../../shared/Stars';
+import { useSaver } from '../../shared/saver';
+
+const MapView = lazy(() => import('../../shared/MapView'));
 
 const STEPS = ['confirmed', 'preparing', 'ready', 'picked', 'delivered'];
 
@@ -11,6 +12,8 @@ export default function Track({ orderId, onBack }) {
   const [order, setOrder] = useState(null);
   const [driverPos, setDriverPos] = useState(null);
   const [error, setError] = useState('');
+  const [saver] = useSaver();
+  const [showMap, setShowMap] = useState(!saver);
 
   // الطلب + تحديثاته المباشرة
   useEffect(() => {
@@ -68,12 +71,21 @@ export default function Track({ orderId, onBack }) {
               {STEPS.map((s, i) => <span key={s} className={i <= stepIndex ? 'done' : ''} />)}
             </div>
           )}
-          <BaseMap height={380}>
-            <FitBounds points={[vendorPoint, homePoint]} />
-            {vendorPoint && <Marker position={vendorPoint} icon={icons.vendor}><Popup>{order.vendor_name}</Popup></Marker>}
-            {homePoint && <Marker position={homePoint} icon={icons.home}><Popup>موقعك</Popup></Marker>}
-            {tracking && driverPos && <Marker position={driverPos} icon={icons.driver}><Popup>{order.driver_name}</Popup></Marker>}
-          </BaseMap>
+          {showMap ? (
+            <Suspense fallback={<span className="sk" style={{ height: 380 }} />}>
+              <MapView
+                height={380}
+                fit={[vendorPoint, homePoint]}
+                markers={[
+                  vendorPoint && { point: vendorPoint, icon: 'vendor', popup: order.vendor_name },
+                  homePoint && { point: homePoint, icon: 'home', popup: 'موقعك' },
+                  tracking && driverPos && { point: driverPos, icon: 'driver', popup: order.driver_name },
+                ]}
+              />
+            </Suspense>
+          ) : (
+            <button type="button" className="ghost" onClick={() => setShowMap(true)}>🗺️ اعرض الخريطة</button>
+          )}
           {order.status === 'picked' && <p className="muted">موقع السائق يتحدث مباشرة.</p>}
         </section>
 

@@ -2,8 +2,11 @@ import { supabase, run } from '../../shared/supabase';
 import { useCached } from '../../shared/cache';
 import { money } from '../../shared/utils';
 import ActionBar from '../../shared/ActionBar';
+import { useSaver } from '../../shared/saver';
+import { useState } from 'react';
 
 export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
+  const [saver] = useSaver();
   // طلب واحد للمتجر ومنتجاته معاً بدل طلبين متتاليين
   const { data: store, error, stale, loading } = useCached(
     `store:${vendorId}`,
@@ -44,11 +47,7 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
         <div className="grid">
           {store.products.map((p) => (
             <div key={p.id} className="panel stack">
-              {p.image_url ? (
-                <img className="thumb" src={p.image_url} alt={p.name} loading="lazy" decoding="async" />
-              ) : (
-                <div className="thumb">📦</div>
-              )}
+              <ProductImage product={p} saver={saver} />
               <div>
                 <h3>{p.name}</h3>
                 {p.description && <div className="muted">{p.description}</div>}
@@ -77,6 +76,21 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
       )}
     </div>
   );
+}
+
+// في وضع التوفير لا تُحمّل الصورة إلا إذا طلبها المستخدم
+function ProductImage({ product, saver }) {
+  const [show, setShow] = useState(!saver);
+  if (!product.image_url) return <div className="thumb">📦</div>;
+  if (!show) {
+    return (
+      <button type="button" className="thumb thumb-btn" onClick={() => setShow(true)}>
+        <span>🖼️</span>
+        <small>اعرض الصورة</small>
+      </button>
+    );
+  }
+  return <img className="thumb" src={product.image_url} alt={product.name} loading="lazy" decoding="async" />;
 }
 
 function StoreSkeleton({ onBack }) {
