@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useProfile, Login } from '../shared/auth';
 import { supabase, run } from '../shared/supabase';
 import Topbar from '../shared/Topbar';
+import NotificationBell from '../shared/NotificationBell';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 
@@ -43,9 +44,12 @@ export default function App() {
         active={tab}
         onTab={setTab}
         right={
-          <button className={store.is_open ? 'ok sm' : 'danger sm'} onClick={toggleOpen}>
-            {store.is_open ? 'المتجر مفتوح — إغلاق' : 'المتجر مغلق — فتح'}
-          </button>
+          <>
+            <NotificationBell userId={profile.id} onOpenOrder={() => setTab('orders')} />
+            <button className={store.is_open ? 'ok sm' : 'danger sm'} onClick={toggleOpen}>
+              {store.is_open ? 'المتجر مفتوح — إغلاق' : 'المتجر مغلق — فتح'}
+            </button>
+          </>
         }
         onLogout={logout}
       />

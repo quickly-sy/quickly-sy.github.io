@@ -3,6 +3,7 @@ import { useProfile, Login } from '../shared/auth';
 import Topbar from '../shared/Topbar';
 import ThemeToggle from '../shared/ThemeToggle';
 import SaverToggle from '../shared/SaverToggle';
+import NotificationBell from '../shared/NotificationBell';
 import Stores from './pages/Stores';
 import Browse from './pages/Browse';
 import BottomNav from './BottomNav';
@@ -72,6 +73,7 @@ export default function App() {
         right={
           <>
             <span className="muted">{profile.name}</span>
+            <NotificationBell userId={profile.id} onOpenOrder={(id) => go('track', { orderId: id })} />
             <SaverToggle />
             <ThemeToggle className="ghost sm" />
           </>

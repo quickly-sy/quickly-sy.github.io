@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { rpc } from '../../shared/supabase';
 import { reverseGeocode } from '../../shared/geocode';
 import { money, toPoint } from '../../shared/utils';
 import ActionBar from '../../shared/ActionBar';
 import { useSaver } from '../../shared/saver';
+import AddressPicker from '../AddressPicker';
 
 const MapView = lazy(() => import('../../shared/MapView'));
 
@@ -19,6 +20,7 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   const [sending, setSending] = useState(false);
   const [saver] = useSaver();
   const [showMap, setShowMap] = useState(!saver);
+  const fromSaved = useRef(false); // اختير عنوان محفوظ: لا داعي لجلب اسم المكان من جديد
   const vendorId = cart.vendor?.id;
 
   // رسوم التوصيل حسب المسافة
@@ -32,6 +34,7 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
   // اسم المكان تلقائياً (بعد توقف تحريك الدبوس بنصف ثانية)
   useEffect(() => {
     if (!point) return;
+    if (fromSaved.current) { fromSaved.current = false; return; } // الاسم جاهز من العنوان المحفوظ
     setLabel('');
     const t = setTimeout(() => reverseGeocode(point).then(setLabel), 600);
     return () => clearTimeout(t);
@@ -128,6 +131,21 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
 
       <section className="panel stack">
         <h3>أين نوصل طلبك؟</h3>
+
+        <AddressPicker
+          point={point}
+          area={label}
+          details={details}
+          onPick={({ lat, lng, area, details: d }) => {
+            fromSaved.current = true;
+            setPoint([lat, lng]);
+            setAccuracy(null);
+            setLabel(area || '');
+            setDetails(d || '');
+            setError('');
+          }}
+        />
+
         <button onClick={locateMe} disabled={locating}>
           {locating ? 'جاري تحديد موقعك...' : '📍 استخدم موقعي الحالي'}
         </button>
