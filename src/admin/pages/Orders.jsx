@@ -66,7 +66,7 @@ export default function Orders() {
                   <td>
                     {o.customer_name}
                     <div className="muted" dir="ltr" style={{ textAlign: 'right' }}>{o.customer_phone}</div>
-                    <div className="muted">{o.order_items.map((i) => `${i.quantity}× ${i.product_name}`).join('، ')}</div>
+                    <div className="muted">{o.order_items.map((i) => `${i.quantity}× ${i.product_name}${i.variant_label ? ` (${i.variant_label})` : ''}`).join('، ')}</div>
                   </td>
                   <td>{o.vendor_name}</td>
                   <td className="price">{money(Number(o.total) + Number(o.delivery_fee))}</td>

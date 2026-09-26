@@ -105,7 +105,13 @@ export default function Orders({ vendorId }) {
               <div>
                 {o.order_items.map((i) => (
                   <div key={i.id} className="item-line">
-                    <span><strong>{i.quantity}×</strong> {i.product_name}</span>
+                    <span className="row" style={{ gap: 8 }}>
+                      {i.variant_image && <img className="row-thumb sm" src={i.variant_image} alt="" loading="lazy" />}
+                      <span>
+                        <strong>{i.quantity}×</strong> {i.product_name}
+                        {i.variant_label && <span className="vtag">{i.variant_label}</span>}
+                      </span>
+                    </span>
                     <span className="price">{money(Number(i.price) * i.quantity)}</span>
                   </div>
                 ))}

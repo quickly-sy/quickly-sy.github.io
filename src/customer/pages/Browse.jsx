@@ -4,10 +4,11 @@ import { useCached } from '../../shared/cache';
 import { useSaver } from '../../shared/saver';
 import CategoryStrip from '../../shared/CategoryStrip';
 import ImageZoom from '../../shared/ImageZoom';
+import VariantPicker, { hasVariants } from '../VariantPicker';
 import { money } from '../../shared/utils';
 
 const PRODUCT_FIELDS =
-  'id, name, description, price, image_url, category_id, vendor:vendors(id, name, is_open, is_active, lat, lng)';
+  'id, name, description, price, image_url, images, variant_mode, variant_labels, variant_off, category_id, vendor:vendors(id, name, is_open, is_active, lat, lng)';
 
 export default function Browse({ initialCategory = null, cart, onAdd, onOpenStore }) {
   const [main, setMain] = useState(initialCategory);
@@ -15,6 +16,7 @@ export default function Browse({ initialCategory = null, cart, onAdd, onOpenStor
   const [q, setQ] = useState('');
   const [openOnly, setOpenOnly] = useState(false);
   const [saver] = useSaver();
+  const [picking, setPicking] = useState(null);
 
   const { data: cats } = useCached('categories', () =>
     run(supabase.from('categories').select('id, parent_id, name, icon, image_url')
@@ -58,10 +60,19 @@ export default function Browse({ initialCategory = null, cart, onAdd, onOpenStor
     .filter((p) => p.vendor && p.vendor.is_active)
     .filter((p) => !openOnly || p.vendor.is_open);
 
+  const vendorOf = (p) => ({ id: p.vendor.id, name: p.vendor.name, lat: p.vendor.lat, lng: p.vendor.lng });
+
   const clearAll = () => { setMain(null); setSub(null); setQ(''); setOpenOnly(false); };
 
   return (
     <div className="stack">
+      {picking && (
+        <VariantPicker
+          product={picking}
+          onPick={(vi) => onAdd(vendorOf(picking), picking, vi)}
+          onClose={() => setPicking(null)}
+        />
+      )}
       <input
         className="search-box"
         placeholder="ابحث عن منتج أو متجر"
@@ -114,7 +125,7 @@ export default function Browse({ initialCategory = null, cart, onAdd, onOpenStor
         <div className="grid products">
           {list.map((p) => (
             <article key={p.id} className="panel stack">
-              {saver ? <div className="thumb">📦</div> : <ImageZoom src={p.image_url} alt={p.name} />}
+              {saver ? <div className="thumb">📦</div> : <ImageZoom src={p.image_url} images={p.images} alt={p.name} />}
               <div>
                 <h3>{p.name}</h3>
                 <button className="link" onClick={() => onOpenStore(p.vendor.id)}>
@@ -126,9 +137,9 @@ export default function Browse({ initialCategory = null, cart, onAdd, onOpenStor
                 <button
                   className="sm"
                   disabled={!p.vendor.is_open}
-                  onClick={() => onAdd({ id: p.vendor.id, name: p.vendor.name, lat: p.vendor.lat, lng: p.vendor.lng }, p)}
+                  onClick={() => (hasVariants(p) ? setPicking(p) : onAdd(vendorOf(p), p))}
                 >
-                  أضف للسلة
+                  {hasVariants(p) ? 'اختر الموديل' : 'أضف للسلة'}
                 </button>
               </div>
             </article>

@@ -11,13 +11,19 @@ export default function App() {
   const { profile, loading, error, reload, logout } = useProfile('vendor');
   const [tab, setTab] = useState('orders');
   const [store, setStore] = useState(null);
+  const [storeError, setStoreError] = useState('');
+  const [tries, setTries] = useState(0);
 
   useEffect(() => {
     if (!profile) return setStore(null);
-    run(supabase.from('vendors').select('*').eq('owner_id', profile.id).single())
-      .then(setStore)
-      .catch((e) => alert(e.message));
-  }, [profile]);
+    setStoreError('');
+    run(supabase.from('vendors').select('*').eq('owner_id', profile.id).maybeSingle())
+      .then((v) => {
+        if (v) setStore(v);
+        else setStoreError('لا يوجد متجر مرتبط بهذا الحساب. من لوحة الإدارة: المتاجر ← ربط الحساب بالمتجر.');
+      })
+      .catch((e) => setStoreError(e.message));
+  }, [profile, tries]);
 
   async function toggleOpen() {
     try {
@@ -35,6 +41,16 @@ export default function App() {
         onDone={reload}
         error={error}
       />;
+  if (storeError)
+    return (
+      <div className="page stack" style={{ maxWidth: 520 }}>
+        <div className="error">{storeError}</div>
+        <div className="row">
+          <button onClick={() => setTries((n) => n + 1)}>إعادة المحاولة</button>
+          <button className="ghost" onClick={logout}>تسجيل الخروج</button>
+        </div>
+      </div>
+    );
   if (!store) return <div className="page muted">جاري تحميل المتجر...</div>;
 
   return (

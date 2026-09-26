@@ -20,6 +20,8 @@ export default function NotificationBell({ userId, onOpenOrder }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef(null);
 
+  const [off, setOff] = useState(false); // جدول الإشعارات غير موجود بعد ← نخفي الجرس
+
   const load = useCallback(() => {
     if (!userId) return;
     run(
@@ -27,19 +29,28 @@ export default function NotificationBell({ userId, onOpenOrder }) {
         .select('id, title, body, order_id, read_at, created_at')
         .order('created_at', { ascending: false })
         .limit(LIMIT)
-    ).then(setList).catch(() => {});
+    )
+      .then((rows) => setList(Array.isArray(rows) ? rows : []))
+      .catch((e) => {
+        // لم يُشغَّل ملف addresses_and_notifications.sql بعد
+        if (/does not exist|relation|schema cache|404/i.test(String(e.message))) setOff(true);
+      });
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
 
   // وصول إشعار جديد أثناء فتح التطبيق
   useEffect(() => {
-    if (!userId) return;
-    return subscribe(
-      [{ event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }],
-      load
-    );
-  }, [userId, load]);
+    if (!userId || off) return undefined;
+    try {
+      return subscribe(
+        [{ event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }],
+        load
+      );
+    } catch {
+      return undefined;
+    }
+  }, [userId, off, load]);
 
   // إغلاق اللوحة عند الضغط خارجها أو بزر Escape
   useEffect(() => {
@@ -54,7 +65,8 @@ export default function NotificationBell({ userId, onOpenOrder }) {
     };
   }, [open]);
 
-  const unread = list.filter((n) => !n.read_at).length;
+  const unread = (list || []).filter((n) => !n.read_at).length;
+  if (off) return null;
 
   async function toggle() {
     const next = !open;

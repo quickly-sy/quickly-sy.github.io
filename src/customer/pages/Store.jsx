@@ -5,9 +5,11 @@ import ActionBar from '../../shared/ActionBar';
 import { useSaver } from '../../shared/saver';
 import ImageZoom from '../../shared/ImageZoom';
 import { useState } from 'react';
+import VariantPicker, { hasVariants } from '../VariantPicker';
 
 export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
   const [saver] = useSaver();
+  const [picking, setPicking] = useState(null);   // المنتج يلي عم نختار موديله
   // طلب واحد للمتجر ومنتجاته معاً بدل طلبين متتاليين
   const { data: store, error, stale, loading } = useCached(
     `store:${vendorId}`,
@@ -15,7 +17,7 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
       run(
         supabase
           .from('vendors')
-          .select('id, name, category, address, lat, lng, is_open, products(id, name, description, price, image_url, is_available)')
+          .select('id, name, category, address, lat, lng, is_open, products(id, name, description, price, image_url, images, variant_mode, variant_labels, variant_off, is_available)')
           .eq('id', vendorId)
           .single()
       ).then((v) => ({
@@ -29,7 +31,7 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
   if (error && !store) return <div className="error">{error}</div>;
 
   const sameStore = cart.vendor?.id === store.id;
-  const qtyOf = (id) => (sameStore ? cart.items.find((i) => i.product.id === id)?.qty || 0 : 0);
+  const qtyOf = (id) => (sameStore ? cart.items.filter((i) => i.product.id === id).reduce((s2, i) => s2 + i.qty, 0) : 0);
   const count = sameStore ? cart.items.reduce((s, i) => s + i.qty, 0) : 0;
   const vendorInfo = { id: store.id, name: store.name, lat: store.lat, lng: store.lng };
   const subtotal = sameStore ? cart.items.reduce((sum, i) => sum + Number(i.product.price) * i.qty, 0) : 0;
@@ -52,11 +54,18 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
               <div>
                 <h3>{p.name}</h3>
                 {p.description && <div className="muted">{p.description}</div>}
+                {hasVariants(p) && <div className="muted">{p.images.length} موديل متاح</div>}
               </div>
               <div className="row between">
                 <span className="price">{money(p.price)}</span>
-                <button className="sm" disabled={!store.is_open} onClick={() => onAdd(vendorInfo, p)}>
-                  {qtyOf(p.id) ? `في السلة: ${qtyOf(p.id)} ＋` : 'أضف للسلة'}
+                <button
+                  className="sm"
+                  disabled={!store.is_open}
+                  onClick={() => (hasVariants(p) ? setPicking(p) : onAdd(vendorInfo, p))}
+                >
+                  {qtyOf(p.id)
+                    ? `في السلة: ${qtyOf(p.id)} ＋`
+                    : hasVariants(p) ? 'اختر الموديل' : 'أضف للسلة'}
                 </button>
               </div>
             </div>
@@ -64,6 +73,14 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
         </div>
       ) : (
         <div className="empty">لا توجد منتجات متاحة في هذا المتجر الآن.</div>
+      )}
+
+      {picking && (
+        <VariantPicker
+          product={picking}
+          onPick={(vi) => onAdd(vendorInfo, picking, vi)}
+          onClose={() => setPicking(null)}
+        />
       )}
 
       {count > 0 && (
@@ -91,7 +108,7 @@ function ProductImage({ product, saver }) {
       </button>
     );
   }
-  return <ImageZoom src={product.image_url} alt={product.name} />;
+  return <ImageZoom src={product.image_url} images={product.images} alt={product.name} />;
 }
 
 function StoreSkeleton({ onBack }) {

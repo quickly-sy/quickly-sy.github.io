@@ -377,6 +377,14 @@ input, select, textarea { background: var(--field); }
   .grid.products { grid-template-columns: 1fr; }
 }
 
+/* نص الخطأ عند حدوث خلل غير متوقع */
+.crash-text {
+  background: var(--ground); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; margin: 0; font-size: 12.5px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word; direction: ltr; text-align: left;
+  max-height: 40vh; overflow: auto;
+}
+
 /* ==================== رفع الصور ==================== */
 .up-block { gap: 8px; }
 .up-preview { position: relative; width: 100%; }
@@ -405,6 +413,119 @@ input, select, textarea { background: var(--field); }
   display: grid; place-items: center; font-size: 18px;
   border: 1px dashed var(--line); color: var(--muted);
 }
+
+/* ==================== الموديلات ==================== */
+/* وسم صغير بجانب اسم المنتج: "موديل 3" */
+.vtag {
+  display: inline-block; margin-inline-start: 6px;
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent); border-radius: 999px;
+  padding: 1px 9px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+}
+
+/* نافذة اختيار الموديل عند الزبون */
+.vpick { width: min(560px, 100%); max-height: 88vh; overflow-y: auto; padding-bottom: 0; }
+/* زر التأكيد يبقى ظاهراً مهما كثرت الموديلات */
+.vpick-foot {
+  position: sticky; bottom: 0; z-index: 2;
+  background: var(--paper); padding: 12px 0 16px;
+  box-shadow: 0 -10px 14px -10px rgba(0, 0, 0, .25);
+}
+.vpick-foot button { width: 100%; }
+.vgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+.vcell {
+  position: relative; background: var(--paper); color: var(--ink);
+  border: 2px solid var(--line); border-radius: 14px; padding: 6px;
+  display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 12.5px;
+}
+.vcell img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--ground); }
+.vcell:hover { border-color: var(--accent); filter: none; }
+.vcell.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: 700; }
+.vcell.off { opacity: .5; cursor: not-allowed; }
+.vcell.off:hover { border-color: var(--line); }
+.vcell em {
+  position: absolute; inset-inline: 8px; top: 40%;
+  background: var(--danger); color: #fff; font-style: normal;
+  font-size: 11px; text-align: center; border-radius: 6px; padding: 2px 0;
+}
+
+/* إعداد الموديلات عند المتجر */
+.var-editor { border: 1px dashed var(--line); border-radius: 12px; padding: 12px; }
+.var-rows { display: flex; flex-direction: column; gap: 8px; }
+.var-row { display: flex; align-items: center; gap: 8px; }
+.var-row img { width: 42px; height: 42px; object-fit: cover; border-radius: 9px; background: var(--ground); flex: 0 0 auto; }
+.var-row input { flex: 1; padding: 7px 10px; font-size: 13.5px; }
+.var-row.off img, .var-row.uploading img, .var-row.waiting img { opacity: .45; }
+.var-row.error img { border: 2px solid var(--danger); opacity: .6; }
+.vswitch button { font-size: 12.5px; padding: 5px 11px; }
+
+/* صورة مصغّرة صغيرة داخل سطر الطلب */
+.row-thumb.sm { width: 34px; height: 34px; border-radius: 8px; flex: 0 0 auto; }
+
+/* شارة عدد الصور */
+.img-count {
+  position: absolute; top: 8px; inset-inline-start: 8px;
+  background: rgba(0, 0, 0, .6); color: #fff;
+  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 8px;
+}
+
+/* شبكة صور المنتج في نموذج المتجر */
+.imgs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.imgs-cell { position: relative; }
+.imgs-cell img {
+  width: 100%; aspect-ratio: 1; object-fit: cover; display: block;
+  border-radius: 12px; background: var(--ground); border: 2px solid transparent; cursor: pointer;
+}
+.imgs-cell.cover img { border-color: var(--accent); cursor: default; }
+.imgs-cell em {
+  position: absolute; inset-inline: 4px; bottom: 4px; text-align: center;
+  background: rgba(0, 0, 0, .62); color: #fff; font-size: 10px; font-style: normal;
+  border-radius: 6px; padding: 2px 0;
+}
+.imgs-cell em.hint { opacity: 0; transition: opacity .15s; }
+.imgs-cell:hover em.hint { opacity: 1; }
+.imgs-cell .up-x { width: 22px; height: 22px; font-size: 11px; top: 4px; inset-inline-end: 4px; }
+
+/* شريط الصور المصغّر داخل بطاقة الإضافة السريعة */
+.mini-strip {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  padding: 6px 4px 2px;   /* مساحة لزر الحذف حتى لا ينقص */
+}
+.mini-strip::-webkit-scrollbar { display: none; }
+.mini { position: relative; flex: 0 0 auto; display: inline-block; line-height: 0; }
+.mini img {
+  width: 48px; height: 48px; object-fit: cover; border-radius: 9px;
+  border: 2px solid transparent; background: var(--ground); display: block; cursor: pointer;
+}
+.mini.cover img { border-color: var(--accent); cursor: default; }
+.mini.uploading img, .mini.waiting img { opacity: .45; }
+.mini.error img { border-color: var(--danger); opacity: .6; }
+.mini em {
+  position: absolute; inset-inline: 0; bottom: 0; text-align: center;
+  background: rgba(0, 0, 0, .6); color: #fff; font-size: 9px; font-style: normal;
+  border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+}
+.mini-x {
+  position: absolute; top: -5px; inset-inline-end: -5px;
+  width: 18px; height: 18px; padding: 0; border-radius: 50%; font-size: 10px; line-height: 1;
+  background: rgba(0, 0, 0, .72); color: #fff; border: 0;
+}
+
+/* تنقّل داخل معرض ملء الشاشة */
+.zoom-nav {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  background: rgba(255, 255, 255, .15); color: #fff; border: 0;
+  width: 46px; height: 46px; border-radius: 50%; padding: 0; font-size: 26px; line-height: 1;
+}
+.zoom-nav:hover { background: rgba(255, 255, 255, .28); filter: none; }
+.zoom-nav.prev { inset-inline-end: 14px; }
+.zoom-nav.next { inset-inline-start: 14px; }
+.zoom-dots { position: fixed; bottom: 20px; inset-inline: 0; display: flex; justify-content: center; gap: 7px; }
+.zoom-dots button {
+  width: 9px; height: 9px; border-radius: 50%; padding: 0; border: 0;
+  background: rgba(255, 255, 255, .38);
+}
+.zoom-dots button.on { background: var(--gold-hi); width: 22px; border-radius: 5px; }
 
 /* بطاقات الإضافة السريعة */
 .bulk-card input { padding: 8px 10px; font-size: 14px; }

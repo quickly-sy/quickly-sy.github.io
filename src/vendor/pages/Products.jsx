@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run } from '../../shared/supabase';
 import { money } from '../../shared/utils';
-import ImageUpload from '../../shared/ImageUpload';
+import ImagesUpload from '../../shared/ImagesUpload';
+import VariantEditor from '../../shared/VariantEditor';
 
-const EMPTY = { name: '', description: '', price: '', image_url: '', is_available: true, category_id: '' };
+const EMPTY = {
+  name: '', description: '', price: '', image_url: '', images: [],
+  variant_mode: false, variant_labels: [], variant_off: [],
+  is_available: true, category_id: '',
+};
 
 export default function Products({ vendorId }) {
   const [items, setItems] = useState([]);
@@ -46,7 +51,11 @@ export default function Products({ vendorId }) {
       name: form.name.trim(),
       description: form.description.trim() || null,
       price: Number(form.price),
-      image_url: form.image_url.trim() || null,
+      image_url: (form.images && form.images[0]) || form.image_url.trim() || null,
+      images: form.images || [],
+      variant_mode: !!form.variant_mode && (form.images || []).length > 1,
+      variant_labels: form.variant_labels || [],
+      variant_off: form.variant_off || [],
       is_available: form.is_available === true || form.is_available === 'true',
       category_id: form.category_id ? Number(form.category_id) : mainId ? Number(mainId) : null,
     };
@@ -64,7 +73,11 @@ export default function Products({ vendorId }) {
     setEditId(p.id);
     setForm({
       name: p.name, description: p.description || '', price: p.price,
-      image_url: p.image_url || '', is_available: p.is_available,
+      image_url: p.image_url || '', images: Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []),
+      variant_mode: !!p.variant_mode,
+      variant_labels: Array.isArray(p.variant_labels) ? p.variant_labels : [],
+      variant_off: Array.isArray(p.variant_off) ? p.variant_off : [],
+      is_available: p.is_available,
       category_id: p.category_id || '',
     });
     const own = cats.find((c) => c.id === p.category_id);
@@ -119,10 +132,18 @@ export default function Products({ vendorId }) {
           {!cats.length && <div className="muted">لا توجد تصنيفات بعد — تضيفها إدارة Quickly.</div>}
         </div>
         <div><label>السعر</label><input type="number" min="0" step="0.01" value={form.price} onChange={set('price')} dir="ltr" /></div>
-        <ImageUpload
-          value={form.image_url}
-          onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+        <ImagesUpload
+          value={form.images}
+          onChange={(imgs) => setForm((f) => ({ ...f, images: imgs, image_url: imgs[0] || '' }))}
           folder={`vendors/${vendorId}`}
+        />
+        <VariantEditor
+          images={form.images}
+          mode={form.variant_mode}
+          labels={form.variant_labels}
+          off={form.variant_off}
+          onChange={({ mode, labels, off }) =>
+            setForm((f) => ({ ...f, variant_mode: mode, variant_labels: labels, variant_off: off }))}
         />
         <div>
           <label>الحالة</label>
@@ -153,7 +174,13 @@ export default function Products({ vendorId }) {
                         ? <img className="row-thumb" src={p.image_url} alt="" loading="lazy" />
                         : <span className="row-thumb none" title="بلا صورة">📷</span>}
                     </td>
-                    <td><strong>{p.name}</strong>{p.description && <div className="muted">{p.description}</div>}</td>
+                    <td>
+                      <strong>{p.name}</strong>
+                      {p.variant_mode && Array.isArray(p.images) && p.images.length > 1 && (
+                        <span className="vtag">{p.images.length} موديل</span>
+                      )}
+                      {p.description && <div className="muted">{p.description}</div>}
+                    </td>
                     <td className="muted">{catName(p.category_id) || <span style={{ color: 'var(--danger)' }}>بلا تصنيف</span>}</td>
                     <td className="price">{money(p.price)}</td>
                     <td>

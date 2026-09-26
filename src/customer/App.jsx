@@ -20,24 +20,26 @@ export default function App() {
   const [cart, setCart] = useState(EMPTY_CART);
   const go = (name, extra = {}) => setPage({ name, ...extra });
 
-  // السلة من متجر واحد فقط
-  function addToCart(vendor, product) {
+  // السلة من متجر واحد فقط.
+  // كل موديل سطر مستقل: مفتاحه رقم المنتج + رقم الموديل
+  function addToCart(vendor, product, variantIndex = null) {
     let base = cart;
     if (cart.vendor && cart.vendor.id !== vendor.id) {
       if (!window.confirm(`سلتك فيها منتجات من ${cart.vendor.name}. تفريغها والبدء من ${vendor.name}؟`)) return;
       base = EMPTY_CART;
     }
-    const exists = base.items.some((i) => i.product.id === product.id);
+    const key = `${product.id}:${variantIndex ?? ''}`;
+    const exists = base.items.some((i) => i.key === key);
     const items = exists
-      ? base.items.map((i) => (i.product.id === product.id ? { ...i, qty: i.qty + 1 } : i))
-      : [...base.items, { product, qty: 1 }];
+      ? base.items.map((i) => (i.key === key ? { ...i, qty: i.qty + 1 } : i))
+      : [...base.items, { key, product, variantIndex, qty: 1 }];
     setCart({ vendor, items });
   }
 
-  function changeQty(productId, delta) {
+  function changeQty(key, delta) {
     setCart((c) => {
       const items = c.items
-        .map((i) => (i.product.id === productId ? { ...i, qty: i.qty + delta } : i))
+        .map((i) => (i.key === key ? { ...i, qty: i.qty + delta } : i))
         .filter((i) => i.qty > 0);
       return items.length ? { ...c, items } : EMPTY_CART;
     });

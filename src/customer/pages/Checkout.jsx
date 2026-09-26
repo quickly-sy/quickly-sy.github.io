@@ -5,6 +5,7 @@ import { money, toPoint } from '../../shared/utils';
 import ActionBar from '../../shared/ActionBar';
 import { useSaver } from '../../shared/saver';
 import AddressPicker from '../AddressPicker';
+import { variantLabel } from '../VariantPicker';
 
 const MapView = lazy(() => import('../../shared/MapView'));
 
@@ -80,7 +81,11 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
       const address = [label, details.trim()].filter(Boolean).join(' — ');
       const orderId = await rpc('create_order', {
         p_vendor_id: cart.vendor.id,
-        p_items: cart.items.map((i) => ({ product_id: i.product.id, quantity: i.qty })),
+        p_items: cart.items.map((i) => ({
+          product_id: i.product.id,
+          quantity: i.qty,
+          variant_index: i.variantIndex ?? null,
+        })),
         p_lat: point[0],
         p_lng: point[1],
         p_address: address,
@@ -99,19 +104,27 @@ export default function Checkout({ cart, onQty, onDone, onBrowse }) {
       <section className="panel stack">
         <h2>سلتك من {cart.vendor.name}</h2>
         <div>
-          {cart.items.map((i) => (
-            <div key={i.product.id} className="item-line">
-              <div>
-                <strong>{i.product.name}</strong>
-                <div className="muted">{money(i.product.price)}</div>
+          {cart.items.map((i) => {
+            const vi = i.variantIndex;
+            const pic = vi != null ? (i.product.images || [])[vi] : i.product.image_url;
+            return (
+              <div key={i.key} className="item-line">
+                <div className="row" style={{ gap: 10 }}>
+                  {pic && <img className="row-thumb" src={pic} alt="" loading="lazy" />}
+                  <div>
+                    <strong>{i.product.name}</strong>
+                    {vi != null && <div className="vtag">{variantLabel(i.product, vi)}</div>}
+                    <div className="muted">{money(i.product.price)}</div>
+                  </div>
+                </div>
+                <div className="row">
+                  <button className="ghost sm" aria-label="إنقاص" onClick={() => onQty(i.key, -1)}>−</button>
+                  <strong>{i.qty}</strong>
+                  <button className="ghost sm" aria-label="زيادة" onClick={() => onQty(i.key, 1)}>+</button>
+                </div>
               </div>
-              <div className="row">
-                <button className="ghost sm" aria-label="إنقاص" onClick={() => onQty(i.product.id, -1)}>−</button>
-                <strong>{i.qty}</strong>
-                <button className="ghost sm" aria-label="زيادة" onClick={() => onQty(i.product.id, 1)}>+</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <hr />
         <div className="row between"><span>المنتجات</span><span className="price">{money(subtotal)}</span></div>
