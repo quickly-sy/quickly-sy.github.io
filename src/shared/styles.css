@@ -414,6 +414,9 @@ input, select, textarea { background: var(--field); }
   border: 1px dashed var(--line); color: var(--muted);
 }
 
+/* ربط أعمدة الاستيراد */
+.map-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+
 /* صف فيه مشكلة داخل جدول الاستيراد */
 .bad-row { background: rgba(200, 50, 43, .07); }
 details summary { cursor: pointer; }
