@@ -3,6 +3,7 @@ import { useCached } from '../../shared/cache';
 import { money } from '../../shared/utils';
 import ActionBar from '../../shared/ActionBar';
 import { useSaver } from '../../shared/saver';
+import ImageZoom from '../../shared/ImageZoom';
 import { useState } from 'react';
 
 export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
@@ -44,7 +45,7 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
       </div>
       {!store.is_open && <div className="error">المتجر مغلق حالياً، لا يمكن الطلب منه.</div>}
       {store.products.length ? (
-        <div className="grid">
+        <div className="grid products">
           {store.products.map((p) => (
             <div key={p.id} className="panel stack">
               <ProductImage product={p} saver={saver} />
@@ -90,7 +91,7 @@ function ProductImage({ product, saver }) {
       </button>
     );
   }
-  return <img className="thumb" src={product.image_url} alt={product.name} loading="lazy" decoding="async" />;
+  return <ImageZoom src={product.image_url} alt={product.name} />;
 }
 
 function StoreSkeleton({ onBack }) {
@@ -98,7 +99,7 @@ function StoreSkeleton({ onBack }) {
     <div className="stack" aria-busy="true">
       <button className="ghost sm" onClick={onBack}>رجوع للمتاجر</button>
       <span className="sk" style={{ width: 180, height: 26 }} />
-      <div className="grid">
+      <div className="grid products">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="panel stack">
             <span className="sk thumb" />

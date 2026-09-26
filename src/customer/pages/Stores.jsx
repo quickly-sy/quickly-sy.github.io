@@ -2,12 +2,19 @@ import { useState } from 'react';
 import { supabase, run } from '../../shared/supabase';
 import { useCached } from '../../shared/cache';
 import { Rating } from '../../shared/Stars';
+import CategoryStrip from '../../shared/CategoryStrip';
 
 const CATEGORY_ICON = { هدايا: '🎁', مطاعم: '🍽️', بقالة: '🛒', صيدلية: '💊', حلويات: '🍰' };
 
-export default function Stores({ onOpen }) {
+export default function Stores({ onOpen, onBrowse }) {
   const [category, setCategory] = useState('الكل');
   const [q, setQ] = useState('');
+
+  const { data: cats } = useCached('categories', () =>
+    run(supabase.from('categories').select('id, parent_id, name, icon, image_url')
+      .eq('is_active', true).order('sort_order').order('name'))
+  );
+  const mains = (cats || []).filter((c) => !c.parent_id);
 
   const { data: vendors, error, stale, loading } = useCached('vendors', () =>
     run(
@@ -29,16 +36,26 @@ export default function Stores({ onOpen }) {
 
   return (
     <div className="stack">
+      <button type="button" className="search-box search-fake" onClick={() => onBrowse(null)}>
+        🔍 ابحث عن منتج أو متجر
+      </button>
+
+      {mains.length > 0 && (
+        <CategoryStrip items={mains} value={null} onChange={(id) => onBrowse(id)} allLabel="كل الأصناف" />
+      )}
+
       <div className="row between">
         <h2>المتاجر {stale && <span className="dot-pulse" aria-label="جاري التحديث" />}</h2>
-        <input style={{ maxWidth: 280 }} placeholder="ابحث باسم المتجر" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input style={{ maxWidth: 220 }} placeholder="اسم المتجر" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
-      <div className="tabs">
-        {categories.map((c) => (
-          <button key={c} className={category === c ? 'on' : ''} onClick={() => setCategory(c)}>{c}</button>
-        ))}
-      </div>
+      {categories.length > 2 && (
+        <div className="chips">
+          {categories.map((c) => (
+            <button key={c} className={category === c ? 'on' : ''} onClick={() => setCategory(c)}>{c}</button>
+          ))}
+        </div>
+      )}
 
       {list.length ? (
         <div className="grid">

@@ -8,6 +8,7 @@ import Drivers from './pages/Drivers';
 import Settings from './pages/Settings';
 import Tasks from './pages/Tasks';
 import Categories from './pages/Categories';
+import Appearance from './pages/Appearance';
 
 const TABS = [
   ['dashboard', 'نظرة عامة', Dashboard],
@@ -16,6 +17,7 @@ const TABS = [
   ['categories', 'التصنيفات', Categories],
   ['drivers', 'السائقون', Drivers],
   ['tasks', 'المهام الخاصة', Tasks],
+  ['appearance', 'المظهر', Appearance],
   ['settings', 'الإعدادات', Settings],
 ];
 

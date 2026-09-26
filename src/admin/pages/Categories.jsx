@@ -8,6 +8,7 @@ export default function Categories() {
   const [openId, setOpenId] = useState(null);   // التصنيف الرئيسي المفتوح
   const [form, setForm] = useState(EMPTY);      // نموذج تصنيف رئيسي جديد
   const [subName, setSubName] = useState({});   // اسم فرعي جديد لكل رئيسي
+  const [subIcon, setSubIcon] = useState({});   // إيموجي الفرعي الجديد
   const [editing, setEditing] = useState(null); // { id, name, icon }
   const [error, setError] = useState('');
 
@@ -44,8 +45,10 @@ export default function Categories() {
     const name = (subName[parent.id] || '').trim();
     if (!name) return;
     act(async () => {
-      await run(supabase.from('categories').insert({ parent_id: parent.id, name }));
+      const icon = (subIcon[parent.id] || '').trim() || null;
+      await run(supabase.from('categories').insert({ parent_id: parent.id, name, icon }));
       setSubName((s) => ({ ...s, [parent.id]: '' }));
+      setSubIcon((s) => ({ ...s, [parent.id]: '' }));
     });
   };
 
@@ -113,17 +116,26 @@ export default function Categories() {
                 <div className="stack">
                   {subs.map((s) => (
                     <div key={s.id} className="item-line">
-                      <span className={s.is_active ? '' : 'muted'}>{s.name}</span>
+                      <span className={s.is_active ? '' : 'muted'}>
+                        <span style={{ fontSize: 17 }}>{s.icon || '•'}</span> {s.name}
+                      </span>
                       <div className="row">
                         <button className={`sm ${s.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(s)}>
                           {s.is_active ? 'ظاهر' : 'مخفي'}
                         </button>
-                        <button className="ghost sm" onClick={() => setEditing({ id: s.id, name: s.name, icon: '' })}>تعديل</button>
+                        <button className="ghost sm" onClick={() => setEditing({ id: s.id, name: s.name, icon: s.icon || '' })}>تعديل</button>
                         <button className="ghost sm" onClick={() => remove(s)}>حذف</button>
                       </div>
                     </div>
                   ))}
                   <div className="row">
+                    <input
+                      style={{ flex: '0 0 62px', textAlign: 'center' }}
+                      placeholder="💍"
+                      title="إيموجي (اختياري)"
+                      value={subIcon[m.id] || ''}
+                      onChange={(e) => setSubIcon({ ...subIcon, [m.id]: e.target.value })}
+                    />
                     <input
                       style={{ flex: 1 }}
                       placeholder="أضف تصنيفاً فرعياً"

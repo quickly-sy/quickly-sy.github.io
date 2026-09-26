@@ -4,6 +4,8 @@ import Topbar from '../shared/Topbar';
 import ThemeToggle from '../shared/ThemeToggle';
 import SaverToggle from '../shared/SaverToggle';
 import Stores from './pages/Stores';
+import Browse from './pages/Browse';
+import BottomNav from './BottomNav';
 import Store from './pages/Store';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
@@ -59,7 +61,12 @@ export default function App() {
   return (
     <>
       <Topbar
-        tabs={[['stores', 'المتاجر'], ['checkout', `السلة (${cartCount})`], ['orders', 'طلباتي']]}
+        tabs={[
+          ['stores', 'المتاجر'],
+          ['browse', 'الأصناف'],
+          ['checkout', `السلة (${cartCount})`],
+          ['orders', 'طلباتي'],
+        ]}
         active={active}
         onTab={go}
         right={
@@ -72,7 +79,20 @@ export default function App() {
         onLogout={() => { logout(); setCart(EMPTY_CART); go('stores'); }}
       />
       <main className="page">
-        {page.name === 'stores' && <Stores onOpen={(id) => go('store', { vendorId: id })} />}
+        {page.name === 'stores' && (
+          <Stores
+            onOpen={(id) => go('store', { vendorId: id })}
+            onBrowse={(categoryId) => go('browse', { categoryId })}
+          />
+        )}
+        {page.name === 'browse' && (
+          <Browse
+            initialCategory={page.categoryId ?? null}
+            cart={cart}
+            onAdd={addToCart}
+            onOpenStore={(id) => go('store', { vendorId: id })}
+          />
+        )}
         {page.name === 'store' && (
           <Store vendorId={page.vendorId} cart={cart} onAdd={addToCart} onBack={() => go('stores')} onCheckout={() => go('checkout')} />
         )}
@@ -87,6 +107,7 @@ export default function App() {
         {page.name === 'orders' && <Orders profile={profile} onTrack={(id) => go('track', { orderId: id })} />}
         {page.name === 'track' && <Track orderId={page.orderId} onBack={() => go('orders')} />}
       </main>
+      <BottomNav active={active} onGo={(k) => go(k)} cartCount={cartCount} />
     </>
   );
 }

@@ -293,3 +293,147 @@ input, select, textarea { background: var(--field); }
 }
 .modal { width: min(420px, 100%); }
 .dimmed { opacity: .55; }
+
+/* ==================== شاشة التصفّح ==================== */
+
+/* حقل البحث البارز */
+.search-box {
+  width: 100%; padding: 13px 16px; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--field); color: var(--ink); font-size: 15px;
+}
+.search-fake { text-align: start; color: var(--muted); cursor: pointer; font-weight: 500; }
+.search-fake:hover { border-color: var(--accent); background: var(--field); filter: none; }
+
+/* شريط التصنيفات الأفقي */
+.cat-strip {
+  display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 8px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cat-strip::-webkit-scrollbar { display: none; }
+.cat-item {
+  flex: 0 0 auto; width: 78px; background: none; padding: 0; border: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--muted); font-weight: 500;
+}
+.cat-item:hover { filter: none; }
+.cat-thumb {
+  width: 66px; height: 66px; border-radius: 20px;
+  background: var(--paper); border: 2px solid var(--line);
+  display: grid; place-items: center; font-size: 30px; overflow: hidden;
+  transition: border-color .15s, transform .15s;
+}
+.cat-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cat-item.on .cat-thumb { border-color: var(--accent); transform: translateY(-2px); }
+.cat-item.on .cat-name { color: var(--accent-text); font-weight: 700; }
+.cat-name { font-size: 12.5px; line-height: 1.25; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .cat-thumb { transition: none; } }
+
+/* شرائح الفلاتر */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button {
+  flex: 0 0 auto; background: var(--paper); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px;
+  font-size: 13.5px; font-weight: 500; white-space: nowrap;
+}
+.chips button:hover { border-color: var(--accent); filter: none; }
+.chips button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.chips .chip-clear { color: var(--danger); border-color: var(--danger); }
+
+/* تكبير الصورة */
+.thumb-wrap { position: relative; }
+.zoom-btn {
+  position: absolute; inset-inline-end: 8px; bottom: 8px;
+  background: rgba(0, 0, 0, .55); color: #fff; border: 0;
+  width: 32px; height: 32px; border-radius: 10px; padding: 0; font-size: 14px;
+}
+.zoom-btn:hover { background: rgba(0, 0, 0, .75); filter: none; }
+.zoom-back {
+  position: fixed; inset: 0; z-index: 1300; background: rgba(0, 0, 0, .9);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.zoom-back img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+.zoom-close {
+  position: fixed; top: 16px; inset-inline-end: 16px;
+  background: rgba(255, 255, 255, .15); color: #fff; border: 0;
+  width: 40px; height: 40px; border-radius: 50%; font-size: 18px; padding: 0;
+}
+
+/* حواف موحّدة أنعم */
+.panel, .card-btn, .thumb, .sk.thumb { border-radius: 14px; }
+
+/* شبكة المنتجات: عمودان على الموبايل وصور بحجم وسط */
+.grid.products { grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
+.grid.products .thumb, .grid.products .sk.thumb { aspect-ratio: 4 / 3; }
+@media (max-width: 760px) {
+  .grid.products { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .grid.products .panel { padding: 10px; }
+  .grid.products h3 { font-size: 15px; }
+  .grid.products .price { font-size: 14px; }
+  .grid.products button.sm { padding: 5px 9px; font-size: 12.5px; }
+  .grid.products .stack > * + * { margin-top: 8px; }
+}
+@media (max-width: 340px) {
+  .grid.products { grid-template-columns: 1fr; }
+}
+
+/* ==================== لوحة الإدارة: اختيار أيقونات التنقل ==================== */
+.nav-preview {
+  display: flex; max-width: 400px; margin: 0 auto; width: 100%;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+}
+.np-item {
+  flex: 1; background: none; border: 0; border-radius: 0; padding: 9px 4px 7px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  color: var(--muted); font-size: 11.5px; font-weight: 500;
+}
+.np-item:hover { background: var(--ground); filter: none; }
+.np-item.on { color: var(--accent-text); font-weight: 700; background: var(--accent-soft); }
+.np-icon { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 23px; font-size: 21px; }
+.np-label { font-size: 11.5px; }
+
+/* شارة عدد السلة — تُستخدم في التطبيق وفي معاينة الإدارة */
+.bn-badge {
+  position: absolute; top: -5px; inset-inline-end: -10px;
+  background: var(--danger); color: #fff; font-size: 10px; font-weight: 700;
+  min-width: 17px; height: 17px; border-radius: 9px; display: grid; place-items: center; padding: 0 4px;
+}
+
+.icon-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.icon-cell {
+  background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+}
+.icon-cell:hover { border-color: var(--accent); filter: none; }
+.icon-cell small { font-size: 11px; color: var(--muted); font-weight: 500; }
+.icon-cell.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.icon-cell.on small { color: var(--accent-text); font-weight: 600; }
+
+/* ==================== التنقل السفلي ==================== */
+.bottom-nav { display: none; }
+@media (max-width: 760px) {
+  .bottom-nav {
+    display: flex; position: fixed; inset-inline: 0; bottom: 0; z-index: 950;
+    background: var(--paper); border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, .08);
+  }
+  .bottom-nav button {
+    flex: 1; background: none; border: 0; padding: 8px 4px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    color: var(--muted); font-size: 11.5px; font-weight: 500; border-radius: 0;
+  }
+  .bottom-nav button:hover { filter: none; }
+  .bottom-nav button.on { color: var(--accent-text); font-weight: 700; }
+  .bn-icon {
+    font-size: 21px; line-height: 1; position: relative;
+    display: inline-flex; align-items: center; justify-content: center; height: 23px;
+  }
+  /* مساحة أسفل الصفحة حتى لا يغطي الشريط المحتوى */
+  .page { padding-bottom: 76px; }
+  /* شريط الإجراء يجلس فوق شريط التنقل */
+  .action-bar { bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+  .action-spacer { height: 130px; }
+  /* التبويبات العلوية تختفي لصالح التنقل السفلي */
+  [data-app="customer"] .topbar .tabs { display: none; }
+}
