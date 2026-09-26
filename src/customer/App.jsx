@@ -16,7 +16,14 @@ const EMPTY_CART = { vendor: null, items: [] }; // items: [{ product, qty }]
 
 export default function App() {
   const { profile, loading, error, reload, logout } = useProfile('customer');
-  const [page, setPage] = useState({ name: 'stores' });
+  // رابط مباشر لمتجر: ...customer/?store=3
+  const [page, setPage] = useState(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get('store');
+      if (v && /^\d+$/.test(v)) return { name: 'store', vendorId: Number(v) };
+    } catch { /* تجاهل */ }
+    return { name: 'stores' };
+  });
   const [cart, setCart] = useState(EMPTY_CART);
   const go = (name, extra = {}) => setPage({ name, ...extra });
 

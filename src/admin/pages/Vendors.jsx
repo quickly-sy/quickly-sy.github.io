@@ -88,7 +88,7 @@ export default function Vendors() {
 
       <section className="panel table-wrap">
         <table>
-          <thead><tr><th>المتجر</th><th>الحساب</th><th>التقييم</th><th>منتجات</th><th>مفتوح</th><th>مفعّل</th><th></th></tr></thead>
+          <thead><tr><th>المتجر</th><th>الحساب</th><th>التقييم</th><th>منتجات</th><th>مفتوح</th><th>مفعّل</th><th>الرابط</th><th></th></tr></thead>
           <tbody>
             {vendors.map((v) => (
               <tr key={v.id}>
@@ -98,6 +98,7 @@ export default function Vendors() {
                 <td>{v.products?.[0]?.count ?? 0}</td>
                 <td><button className={`sm ${v.is_open ? 'ok' : 'ghost'}`} onClick={() => toggle(v, 'is_open')}>{v.is_open ? 'مفتوح' : 'مغلق'}</button></td>
                 <td><button className={`sm ${v.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(v, 'is_active')}>{v.is_active ? 'مفعّل' : 'موقوف'}</button></td>
+                <td><StoreLink vendorId={v.id} /></td>
                 <td><button className="ghost sm" onClick={() => edit(v)}>تعديل</button></td>
               </tr>
             ))}
@@ -105,5 +106,27 @@ export default function Vendors() {
         </table>
       </section>
     </div>
+  );
+}
+
+// رابط مباشر لصفحة المتجر داخل تطبيق الزبون — للمشاركة بالواتساب أو موقع المتجر
+function StoreLink({ vendorId }) {
+  const [copied, setCopied] = useState(false);
+  const url = `${window.location.origin}${window.location.pathname.replace(/admin\/?$/, '')}customer/?store=${vendorId}`;
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('انسخ الرابط:', url);
+    }
+  }
+
+  return (
+    <button className={`sm ${copied ? 'ok' : 'ghost'}`} onClick={copy} title={url}>
+      {copied ? 'تم النسخ ✓' : 'نسخ الرابط'}
+    </button>
   );
 }

@@ -414,6 +414,10 @@ input, select, textarea { background: var(--field); }
   border: 1px dashed var(--line); color: var(--muted);
 }
 
+/* صف فيه مشكلة داخل جدول الاستيراد */
+.bad-row { background: rgba(200, 50, 43, .07); }
+details summary { cursor: pointer; }
+
 /* ==================== الموديلات ==================== */
 /* وسم صغير بجانب اسم المنتج: "موديل 3" */
 .vtag {

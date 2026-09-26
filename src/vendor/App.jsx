@@ -6,6 +6,7 @@ import NotificationBell from '../shared/NotificationBell';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
 import BulkAdd from './pages/BulkAdd';
+import Import from './pages/Import';
 
 export default function App() {
   const { profile, loading, error, reload, logout } = useProfile('vendor');
@@ -57,7 +58,7 @@ export default function App() {
     <>
       <Topbar
         subtitle={`${store.name}${store.rating_count ? ` ★ ${Number(store.rating_avg).toFixed(1)}` : ''}`}
-        tabs={[['orders', 'الطلبات'], ['products', 'المنتجات'], ['bulk', 'إضافة سريعة']]}
+        tabs={[['orders', 'الطلبات'], ['products', 'المنتجات'], ['bulk', 'إضافة سريعة'], ['import', 'استيراد']]}
         active={tab}
         onTab={setTab}
         right={
@@ -79,6 +80,7 @@ export default function App() {
         {tab === 'orders' && <Orders vendorId={store.id} />}
         {tab === 'products' && <Products vendorId={store.id} />}
         {tab === 'bulk' && <BulkAdd vendorId={store.id} onDone={() => setTab('products')} />}
+        {tab === 'import' && <Import vendorId={store.id} onDone={() => setTab('products')} />}
       </main>
     </>
   );
