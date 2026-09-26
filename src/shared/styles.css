@@ -377,6 +377,45 @@ input, select, textarea { background: var(--field); }
   .grid.products { grid-template-columns: 1fr; }
 }
 
+/* ==================== رفع الصور ==================== */
+.up-block { gap: 8px; }
+.up-preview { position: relative; width: 100%; }
+.up-preview img {
+  width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border-radius: 14px; background: var(--ground); display: block;
+}
+.up-empty {
+  width: 100%; aspect-ratio: 4 / 3; border-radius: 14px;
+  border: 2px dashed var(--line); background: var(--ground);
+  display: grid; place-items: center;
+}
+.up-x {
+  position: absolute; top: 8px; inset-inline-end: 8px;
+  background: rgba(0, 0, 0, .62); color: #fff; border: 0;
+  width: 30px; height: 30px; border-radius: 50%; padding: 0; font-size: 14px; line-height: 1;
+}
+.up-x:hover { background: rgba(0, 0, 0, .82); filter: none; }
+
+/* صورة مصغّرة داخل جدول المنتجات */
+.row-thumb {
+  width: 46px; height: 46px; border-radius: 10px; object-fit: cover;
+  background: var(--ground); display: block;
+}
+.row-thumb.none {
+  display: grid; place-items: center; font-size: 18px;
+  border: 1px dashed var(--line); color: var(--muted);
+}
+
+/* بطاقات الإضافة السريعة */
+.bulk-card input { padding: 8px 10px; font-size: 14px; }
+.bulk-state {
+  position: absolute; inset-inline: 8px; bottom: 8px;
+  background: rgba(0, 0, 0, .66); color: #fff;
+  font-size: 12px; font-weight: 600; text-align: center;
+  padding: 4px 6px; border-radius: 8px;
+}
+.bulk-state.error { background: rgba(200, 50, 43, .88); }
+
 /* ==================== جرس الإشعارات ==================== */
 .bell-wrap { position: relative; display: inline-flex; }
 .bell-btn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 9px; position: relative; }

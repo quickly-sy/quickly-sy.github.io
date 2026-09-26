@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run } from '../../shared/supabase';
 import { money } from '../../shared/utils';
+import ImageUpload from '../../shared/ImageUpload';
 
 const EMPTY = { name: '', description: '', price: '', image_url: '', is_available: true, category_id: '' };
 
@@ -118,7 +119,11 @@ export default function Products({ vendorId }) {
           {!cats.length && <div className="muted">لا توجد تصنيفات بعد — تضيفها إدارة Quickly.</div>}
         </div>
         <div><label>السعر</label><input type="number" min="0" step="0.01" value={form.price} onChange={set('price')} dir="ltr" /></div>
-        <div><label>رابط الصورة (اختياري)</label><input value={form.image_url} onChange={set('image_url')} dir="ltr" placeholder="https://..." /></div>
+        <ImageUpload
+          value={form.image_url}
+          onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+          folder={`vendors/${vendorId}`}
+        />
         <div>
           <label>الحالة</label>
           <select value={String(form.is_available)} onChange={set('is_available')}>
@@ -139,10 +144,15 @@ export default function Products({ vendorId }) {
         ) : (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>المنتج</th><th>التصنيف</th><th>السعر</th><th>الحالة</th><th></th></tr></thead>
+              <thead><tr><th></th><th>المنتج</th><th>التصنيف</th><th>السعر</th><th>الحالة</th><th></th></tr></thead>
               <tbody>
                 {items.map((p) => (
                   <tr key={p.id}>
+                    <td>
+                      {p.image_url
+                        ? <img className="row-thumb" src={p.image_url} alt="" loading="lazy" />
+                        : <span className="row-thumb none" title="بلا صورة">📷</span>}
+                    </td>
                     <td><strong>{p.name}</strong>{p.description && <div className="muted">{p.description}</div>}</td>
                     <td className="muted">{catName(p.category_id) || <span style={{ color: 'var(--danger)' }}>بلا تصنيف</span>}</td>
                     <td className="price">{money(p.price)}</td>

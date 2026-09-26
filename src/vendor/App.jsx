@@ -5,6 +5,7 @@ import Topbar from '../shared/Topbar';
 import NotificationBell from '../shared/NotificationBell';
 import Orders from './pages/Orders';
 import Products from './pages/Products';
+import BulkAdd from './pages/BulkAdd';
 
 export default function App() {
   const { profile, loading, error, reload, logout } = useProfile('vendor');
@@ -40,7 +41,7 @@ export default function App() {
     <>
       <Topbar
         subtitle={`${store.name}${store.rating_count ? ` ★ ${Number(store.rating_avg).toFixed(1)}` : ''}`}
-        tabs={[['orders', 'الطلبات'], ['products', 'المنتجات']]}
+        tabs={[['orders', 'الطلبات'], ['products', 'المنتجات'], ['bulk', 'إضافة سريعة']]}
         active={tab}
         onTab={setTab}
         right={
@@ -58,7 +59,11 @@ export default function App() {
           <div className="error">حساب المتجر موقوف حالياً ولا يظهر للزبائن. تواصل مع إدارة Quickly.</div>
         </div>
       )}
-      <main className="page">{tab === 'orders' ? <Orders vendorId={store.id} /> : <Products vendorId={store.id} />}</main>
+      <main className="page">
+        {tab === 'orders' && <Orders vendorId={store.id} />}
+        {tab === 'products' && <Products vendorId={store.id} />}
+        {tab === 'bulk' && <BulkAdd vendorId={store.id} onDone={() => setTab('products')} />}
+      </main>
     </>
   );
 }

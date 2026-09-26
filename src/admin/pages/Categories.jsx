@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run } from '../../shared/supabase';
+import ImageUpload from '../../shared/ImageUpload';
 
 const EMPTY = { name: '', icon: '', image_url: '', sort_order: 100 };
 
@@ -83,7 +84,12 @@ export default function Categories() {
         <div className="notice">الرئيسي يظهر للزبون كشريط أصناف. الفرعي يظهر تحته عند الضغط عليه.</div>
         <div><label>الاسم</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثلاً: بياضات وسجاد" /></div>
         <div><label>إيموجي (اختياري)</label><input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} placeholder="🛏️" /></div>
-        <div><label>رابط صورة (اختياري)</label><input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} dir="ltr" placeholder="https://..." /></div>
+        <ImageUpload
+          label="صورة التصنيف (اختياري — تحلّ محل الإيموجي)"
+          value={form.image_url}
+          onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+          folder="categories"
+        />
         <div><label>الترتيب (الأصغر يظهر أولاً)</label><input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} dir="ltr" /></div>
         {error && <div className="error">{error}</div>}
         <button>إضافة</button>
