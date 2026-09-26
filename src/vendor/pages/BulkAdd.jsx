@@ -201,6 +201,21 @@ export default function BulkAdd({ vendorId, onDone }) {
         }
       }
 
+      // أمان: أي أسماء متكررة داخل نفس الدفعة بترقّم لحالها
+      const seen = new Map();
+      for (const b of body) {
+        const n = (seen.get(b.name) || 0) + 1;
+        seen.set(b.name, n);
+      }
+      const used = new Map();
+      for (const b of body) {
+        if (seen.get(b.name) > 1) {
+          const n = (used.get(b.name) || 0) + 1;
+          used.set(b.name, n);
+          b.name = `${b.name} ${n}`;
+        }
+      }
+
       await run(supabase.from('products').insert(body));
 
       const done = new Set(ready.map((r) => r.key));

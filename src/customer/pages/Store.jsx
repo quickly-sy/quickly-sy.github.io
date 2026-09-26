@@ -4,12 +4,15 @@ import { money } from '../../shared/utils';
 import ActionBar from '../../shared/ActionBar';
 import { useSaver } from '../../shared/saver';
 import ImageZoom from '../../shared/ImageZoom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import CategoryStrip from '../../shared/CategoryStrip';
 import VariantPicker, { hasVariants } from '../VariantPicker';
 
 export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
   const [saver] = useSaver();
   const [picking, setPicking] = useState(null);   // المنتج يلي عم نختار موديله
+  const [main, setMain] = useState(null);         // التصنيف الرئيسي المختار داخل المتجر
+  const [sub, setSub] = useState(null);           // الفرعي
   // طلب واحد للمتجر ومنتجاته معاً بدل طلبين متتاليين
   const { data: store, error, stale, loading } = useCached(
     `store:${vendorId}`,
@@ -17,7 +20,7 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
       run(
         supabase
           .from('vendors')
-          .select('id, name, category, address, lat, lng, is_open, products(id, name, description, price, image_url, images, variant_mode, variant_labels, variant_off, is_available)')
+          .select('id, name, category, address, lat, lng, is_open, products(id, name, description, price, image_url, images, category_id, variant_mode, variant_labels, variant_off, is_available)')
           .eq('id', vendorId)
           .single()
       ).then((v) => ({
@@ -27,6 +30,33 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
     [vendorId]
   );
 
+  const { data: cats } = useCached('categories', () =>
+    run(supabase.from('categories').select('id, parent_id, name, icon, image_url')
+      .eq('is_active', true).order('sort_order').order('name'))
+  );
+
+  // تصنيفات هذا المتجر فقط: يلي فيها منتجات فعلاً
+  const tree = useMemo(() => {
+    const all = cats || [];
+    const products = store?.products || [];
+    if (!all.length || !products.length) return { mains: [], subsOf: () => [] };
+
+    const used = new Set(products.map((p) => p.category_id).filter(Boolean));
+    const byId = new Map(all.map((c) => [c.id, c]));
+
+    // كل فرعي مستعمل يجرّ معه رئيسيه
+    const mainIds = new Set();
+    for (const id of used) {
+      const c = byId.get(id);
+      if (!c) continue;
+      mainIds.add(c.parent_id || c.id);
+    }
+
+    const mains = all.filter((c) => !c.parent_id && mainIds.has(c.id));
+    const subsOf = (mid) => all.filter((c) => c.parent_id === mid && used.has(c.id));
+    return { mains, subsOf };
+  }, [cats, store]);
+
   if (loading) return <StoreSkeleton onBack={onBack} />;
   if (error && !store) return <div className="error">{error}</div>;
 
@@ -35,6 +65,16 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
   const count = sameStore ? cart.items.reduce((s, i) => s + i.qty, 0) : 0;
   const vendorInfo = { id: store.id, name: store.name, lat: store.lat, lng: store.lng };
   const subtotal = sameStore ? cart.items.reduce((sum, i) => sum + Number(i.product.price) * i.qty, 0) : 0;
+
+  // متجر بتصنيف رئيسي واحد: نعرض فرعياته مباشرة — أوضح للزبون
+  const oneMain = tree.mains.length === 1;
+  const subsOfOne = oneMain ? tree.subsOf(tree.mains[0].id) : [];
+
+  const pick = sub || (oneMain ? null : main);
+  const ids = pick
+    ? (tree.subsOf(pick).length ? [pick, ...tree.subsOf(pick).map((c) => c.id)] : [pick])
+    : null;
+  const shown = ids ? store.products.filter((p) => ids.includes(p.category_id)) : store.products;
 
   return (
     <div className="stack">
@@ -46,9 +86,35 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
         </div>
       </div>
       {!store.is_open && <div className="error">المتجر مغلق حالياً، لا يمكن الطلب منه.</div>}
-      {store.products.length ? (
+
+      {/* تصنيفات هذا المتجر */}
+      {oneMain ? (
+        subsOfOne.length > 1 && (
+          <CategoryStrip items={subsOfOne} value={sub} onChange={(id) => setSub(id)} allIcon="🗂️" />
+        )
+      ) : (
+        tree.mains.length > 1 && (
+          <CategoryStrip
+            items={tree.mains}
+            value={main}
+            onChange={(id) => { setMain(id); setSub(null); }}
+            allIcon="🗂️"
+          />
+        )
+      )}
+
+      {!oneMain && main && tree.subsOf(main).length > 1 && (
+        <div className="chips">
+          <button className={sub === null ? 'on' : ''} onClick={() => setSub(null)}>الكل</button>
+          {tree.subsOf(main).map((c) => (
+            <button key={c.id} className={sub === c.id ? 'on' : ''} onClick={() => setSub(c.id)}>{c.name}</button>
+          ))}
+        </div>
+      )}
+
+      {shown.length ? (
         <div className="grid products">
-          {store.products.map((p) => (
+          {shown.map((p) => (
             <div key={p.id} className="panel stack">
               <ProductImage product={p} saver={saver} />
               <div>
@@ -72,7 +138,12 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
           ))}
         </div>
       ) : (
-        <div className="empty">لا توجد منتجات متاحة في هذا المتجر الآن.</div>
+        <div className="empty stack">
+          <p>{main || sub ? 'ما في منتجات بهالتصنيف.' : 'لا توجد منتجات متاحة في هذا المتجر الآن.'}</p>
+          {(main || sub) && (
+            <button className="ghost" onClick={() => { setMain(null); setSub(null); }}>اعرض الكل</button>
+          )}
+        </div>
       )}
 
       {picking && (

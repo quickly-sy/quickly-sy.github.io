@@ -28,6 +28,9 @@ const MESSAGES = [
   ['Failed to fetch', 'تعذر الاتصال بالخادم، تحقق من الإنترنت'],
   ['Database error saving new user', 'تعذر إنشاء الحساب، ربما الرقم مستخدم'],
   ['JWT expired', 'انتهت الجلسة، سجّل الدخول من جديد'],
+  ['schema cache', 'قاعدة البيانات ناقصها تحديث — شغّل ملف repair.sql في SQL Editor، وبعدها حدّث الصفحة'],
+  ['Bucket not found', 'حاوية الصور غير موجودة — شغّل ملف storage.sql في SQL Editor'],
+  ['Could not find the function', 'دالة ناقصة بقاعدة البيانات — شغّل ملفات SQL الأخيرة بالترتيب'],
 ];
 
 function toArabic(error) {
