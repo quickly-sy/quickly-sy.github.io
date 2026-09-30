@@ -8,7 +8,7 @@ const CHUNK = 100;
 
 // أسماء الأعمدة المعروفة — للتخمين التلقائي فقط، والتاجر يقدر يعدّل
 const FIELDS = {
-  code:        ['رقم المفتاح', 'المفتاح', 'الكود', 'كود', 'كود المنتج', 'الرمز', 'الباركود', 'code', 'sku', 'barcode', 'item_code', 'product_code', 'ref', 'id'],
+  code:        ['رقم المفتاح', 'المفتاح', 'الكود', 'كود', 'كود المنتج', 'الرمز', 'الباركود', 'code', 'sku', 'barcode', 'item_code', 'product_code', 'ref'],
   name:        ['الاسم', 'اسم المنتج', 'المنتج', 'الصنف', 'name', 'product_name', 'product', 'title', 'item'],
   price:       ['السعر', 'سعر', 'سعر المبيع', 'price', 'sell_price', 'unit_price', 'sale_price'],
   description: ['الوصف', 'التفاصيل', 'ملاحظات', 'description', 'desc', 'notes', 'details'],
@@ -46,6 +46,7 @@ export default function Import({ vendorId, onDone }) {
   const [cats, setCats] = useState([]);
   const [mainId, setMainId] = useState('');
   const [skipDup, setSkipDup] = useState(true);
+  const [rate, setRate] = useState('1');   // معامل ضرب السعر (تحويل عملة مثلاً)
   const [existing, setExisting] = useState(new Set());
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
@@ -103,7 +104,9 @@ export default function Import({ vendorId, onDone }) {
     const get = (r, k) => (map[k] ? cellText(r[map[k]]).trim() : '');
     return table.rows.map((r, n) => {
       const name = get(r, 'name');
-      const price = toNumber(get(r, 'price'));
+      const mult = Number(rate) > 0 ? Number(rate) : 1;
+      const raw = toNumber(get(r, 'price'));
+      const price = Number.isNaN(raw) ? NaN : Math.round(raw * mult * 100) / 100;
       const availRaw = normHeader(get(r, 'available'));
       const problems = [];
       if (!name) problems.push('بلا اسم');
@@ -122,7 +125,7 @@ export default function Import({ vendorId, onDone }) {
         problems,
       };
     });
-  }, [table, map, existing]);
+  }, [table, map, existing, rate]);
 
   const usable = rows.filter((r) => !r.problems.length && !(skipDup && r.dup));
   const badCount = rows.filter((r) => r.problems.length).length;
@@ -286,6 +289,27 @@ export default function Import({ vendorId, onDone }) {
                 onChange={(e) => setSkipDup(e.target.checked)} />
               <span>تجاهل المنتجات الموجودة عندي بنفس الاسم</span>
             </label>
+
+            <div>
+              <label>اضرب السعر × (لو أسعار ملفك بعملة ثانية)</label>
+              <div className="row">
+                <input
+                  type="number" min="0" step="any" dir="ltr" style={{ flex: '0 0 140px' }}
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                />
+                <div className="chips">
+                  {['1', '13300'].map((v) => (
+                    <button key={v} type="button" className={rate === v ? 'on' : ''} onClick={() => setRate(v)}>
+                      {v === '1' ? 'بدون ضرب' : `× ${Number(v).toLocaleString('en')}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <span className="muted" style={{ fontSize: 12 }}>
+                الأسعار بجدول المعاينة تحت بتتحدّث فوراً — تأكد منها قبل الاستيراد.
+              </span>
+            </div>
             {cats.length > 0 && (
               <div>
                 <label>التصنيف الاحتياطي (للأسطر يلي ما فيها تصنيف بالملف)</label>
