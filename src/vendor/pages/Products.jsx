@@ -5,7 +5,7 @@ import ImagesUpload from '../../shared/ImagesUpload';
 import VariantEditor from '../../shared/VariantEditor';
 
 const EMPTY = {
-  name: '', description: '', price: '', image_url: '', images: [],
+  code: '', name: '', description: '', price: '', image_url: '', images: [],
   variant_mode: false, variant_labels: [], variant_off: [],
   is_available: true, category_id: '',
 };
@@ -48,6 +48,7 @@ export default function Products({ vendorId }) {
     setError('');
     if (!form.name.trim() || !(Number(form.price) > 0)) return setError('اسم المنتج وسعر أكبر من صفر مطلوبان.');
     const body = {
+      code: form.code.trim() || null,
       name: form.name.trim(),
       description: form.description.trim() || null,
       price: Number(form.price),
@@ -72,7 +73,7 @@ export default function Products({ vendorId }) {
   function startEdit(p) {
     setEditId(p.id);
     setForm({
-      name: p.name, description: p.description || '', price: p.price,
+      code: p.code || '', name: p.name, description: p.description || '', price: p.price,
       image_url: p.image_url || '', images: Array.isArray(p.images) && p.images.length ? p.images : (p.image_url ? [p.image_url] : []),
       variant_mode: !!p.variant_mode,
       variant_labels: Array.isArray(p.variant_labels) ? p.variant_labels : [],
@@ -106,7 +107,13 @@ export default function Products({ vendorId }) {
     <div className="split side">
       <form className="panel stack" onSubmit={save}>
         <h3>{editId ? 'تعديل المنتج' : 'منتج جديد'}</h3>
-        <div><label>الاسم</label><input value={form.name} onChange={set('name')} /></div>
+        <div className="row">
+          <div style={{ flex: '0 0 110px' }}>
+            <label>رقم المفتاح</label>
+            <input value={form.code} onChange={set('code')} dir="ltr" placeholder="1271" />
+          </div>
+          <div style={{ flex: 1 }}><label>الاسم</label><input value={form.name} onChange={set('name')} /></div>
+        </div>
         <div><label>الوصف</label><textarea rows={2} value={form.description} onChange={set('description')} /></div>
         <div>
           <label>التصنيف</label>
@@ -175,6 +182,7 @@ export default function Products({ vendorId }) {
                         : <span className="row-thumb none" title="بلا صورة">📷</span>}
                     </td>
                     <td>
+                      {p.code && <span className="muted" dir="ltr" style={{ marginInlineEnd: 6 }}>{p.code}</span>}
                       <strong>{p.name}</strong>
                       {p.variant_mode && Array.isArray(p.images) && p.images.length > 1 && (
                         <span className="vtag">{p.images.length} موديل</span>

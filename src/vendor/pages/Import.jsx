@@ -8,6 +8,7 @@ const CHUNK = 100;
 
 // أسماء الأعمدة المعروفة — للتخمين التلقائي فقط، والتاجر يقدر يعدّل
 const FIELDS = {
+  code:        ['رقم المفتاح', 'المفتاح', 'الكود', 'كود', 'كود المنتج', 'الرمز', 'الباركود', 'code', 'sku', 'barcode', 'item_code', 'product_code', 'ref', 'id'],
   name:        ['الاسم', 'اسم المنتج', 'المنتج', 'الصنف', 'name', 'product_name', 'product', 'title', 'item'],
   price:       ['السعر', 'سعر', 'سعر المبيع', 'price', 'sell_price', 'unit_price', 'sale_price'],
   description: ['الوصف', 'التفاصيل', 'ملاحظات', 'description', 'desc', 'notes', 'details'],
@@ -18,6 +19,7 @@ const FIELDS = {
 };
 
 const LABELS = {
+  code: 'رقم المفتاح',
   name: 'الاسم *',
   price: 'السعر *',
   description: 'الوصف',
@@ -28,10 +30,10 @@ const LABELS = {
 };
 
 const TEMPLATE = [
-  ['الاسم', 'الوصف', 'السعر', 'التصنيف الرئيسي', 'التصنيف الفرعي', 'رابط الصورة', 'متوفر'],
-  ['خلخال فضة 1', 'فضة عيار 925', '450', 'إكسسوارات', 'خلخال', '', 'نعم'],
-  ['اسوارة vip 1', '', '550', 'إكسسوارات', 'أساور', '', 'نعم'],
-  ['حرف مضيء', 'حسب الطلب', '350', 'هدايا', '', '', 'نعم'],
+  ['رقم المفتاح', 'الاسم', 'الوصف', 'السعر', 'التصنيف الرئيسي', 'التصنيف الفرعي', 'رابط الصورة', 'متوفر'],
+  ['1271', 'خلخال فضة 1', 'فضة عيار 925', '450', 'إكسسوارات', 'خلخال', '', 'نعم'],
+  ['1272', 'اسوارة vip 1', '', '550', 'إكسسوارات', 'أساور', '', 'نعم'],
+  ['1310', 'حرف مضيء', 'حسب الطلب', '350', 'هدايا', '', '', 'نعم'],
 ];
 
 const FALSE_WORDS = ['لا', 'غير متوفر', 'لا يوجد', 'no', 'false', '0', 'غير متاح', 'منتهي', 'inactive'];
@@ -108,6 +110,7 @@ export default function Import({ vendorId, onDone }) {
       if (!(price > 0)) problems.push('سعر غير صالح');
       return {
         line: n + 1,
+        code: get(r, 'code'),
         name,
         description: get(r, 'description'),
         price,
@@ -151,6 +154,7 @@ export default function Import({ vendorId, onDone }) {
         const img = /^https?:\/\//i.test(r.image) ? r.image : '';
         bodies.push({
           vendor_id: vendorId,
+          code: r.code || null,
           name: r.name,
           description: r.description || null,
           price: r.price,
@@ -258,6 +262,12 @@ export default function Import({ vendorId, onDone }) {
           {(!map.name || !map.price) && (
             <div className="error">لازم تحدّد عمود الاسم وعمود السعر على الأقل.</div>
           )}
+          {map.name && map.price && !map.code && (
+            <div className="notice">
+              ما ربطت عمود «رقم المفتاح». إذا صورك مسمّاة بأرقام المفاتيح،
+              اربطه هلق — بيخلّي ربط الصور تطابقاً تاماً بدل التخمين بالاسم.
+            </div>
+          )}
         </div>
       )}
 
@@ -293,12 +303,13 @@ export default function Import({ vendorId, onDone }) {
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>#</th><th>الاسم</th><th>السعر</th><th>التصنيف</th><th>الحالة</th></tr>
+                  <tr><th>#</th><th>المفتاح</th><th>الاسم</th><th>السعر</th><th>التصنيف</th><th>الحالة</th></tr>
                 </thead>
                 <tbody>
                   {rows.slice(0, 200).map((r) => (
                     <tr key={r.line} className={r.problems.length ? 'bad-row' : ''}>
                       <td className="muted">{r.line}</td>
+                      <td className="muted" dir="ltr" style={{ textAlign: 'right' }}>{r.code || '—'}</td>
                       <td>{r.name || <span className="muted">—</span>}</td>
                       <td className="price">{r.problems.includes('سعر غير صالح') ? '—' : r.price}</td>
                       <td className="muted">{[r.main, r.sub].filter(Boolean).join(' › ') || '—'}</td>
