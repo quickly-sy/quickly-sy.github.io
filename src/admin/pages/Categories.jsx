@@ -64,6 +64,7 @@ export default function Categories() {
         .update({
           name: editing.name.trim(),
           icon: editing.icon?.trim() || null,
+          image_url: editing.image_url?.trim() || null,
           parent_id: parent,
         })
         .eq('id', editing.id));
@@ -113,7 +114,11 @@ export default function Categories() {
             <div key={m.id} className={`panel stack ${m.is_active ? '' : 'dimmed'}`}>
               <div className="row between">
                 <button className="ghost sm" onClick={() => setOpenId(open ? null : m.id)}>
-                  {open ? '▾' : '▸'} <span style={{ fontSize: 18 }}>{m.icon || '📁'}</span> <strong>{m.name}</strong>
+                  {open ? '▾' : '▸'}{' '}
+                  {m.image_url
+                    ? <img className="row-thumb" style={{ width: 30, height: 30, display: 'inline-block', verticalAlign: 'middle' }} src={m.image_url} alt="" />
+                    : <span style={{ fontSize: 18 }}>{m.icon || '📁'}</span>}{' '}
+                  <strong>{m.name}</strong>
                   <span className="muted"> ({subs.length})</span>
                 </button>
                 <div className="row">
@@ -122,7 +127,7 @@ export default function Categories() {
                   <button className={`sm ${m.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(m)}>
                     {m.is_active ? 'ظاهر' : 'مخفي'}
                   </button>
-                  <button className="ghost sm" onClick={() => setEditing({ id: m.id, name: m.name, icon: m.icon || '', parent_id: '', kids: subsOf(m.id).length })}>تعديل</button>
+                  <button className="ghost sm" onClick={() => setEditing({ id: m.id, name: m.name, icon: m.icon || '', image_url: m.image_url || '', parent_id: '', kids: subsOf(m.id).length })}>تعديل</button>
                   <button className="ghost sm" onClick={() => remove(m)}>حذف</button>
                 </div>
               </div>
@@ -132,13 +137,15 @@ export default function Categories() {
                   {subs.map((s) => (
                     <div key={s.id} className="item-line">
                       <span className={s.is_active ? '' : 'muted'}>
-                        <span style={{ fontSize: 17 }}>{s.icon || '•'}</span> {s.name}
+                        {s.image_url
+                          ? <img className="row-thumb" style={{ width: 26, height: 26, display: 'inline-block', verticalAlign: 'middle' }} src={s.image_url} alt="" />
+                          : <span style={{ fontSize: 17 }}>{s.icon || '•'}</span>} {s.name}
                       </span>
                       <div className="row">
                         <button className={`sm ${s.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(s)}>
                           {s.is_active ? 'ظاهر' : 'مخفي'}
                         </button>
-                        <button className="ghost sm" onClick={() => setEditing({ id: s.id, name: s.name, icon: s.icon || '', parent_id: String(s.parent_id), kids: 0 })}>تعديل</button>
+                        <button className="ghost sm" onClick={() => setEditing({ id: s.id, name: s.name, icon: s.icon || '', image_url: s.image_url || '', parent_id: String(s.parent_id), kids: 0 })}>تعديل</button>
                         <button className="ghost sm" onClick={() => remove(s)}>حذف</button>
                       </div>
                     </div>
@@ -173,6 +180,12 @@ export default function Categories() {
             <h3>تعديل التصنيف</h3>
             <div><label>الاسم</label><input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
             <div><label>إيموجي</label><input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} /></div>
+            <ImageUpload
+              label="صورة التصنيف (تحلّ محل الإيموجي)"
+              value={editing.image_url}
+              onChange={(url) => setEditing((e) => ({ ...e, image_url: url }))}
+              folder="categories"
+            />
             <div>
               <label>موقعه بالشجرة</label>
               <select
