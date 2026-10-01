@@ -421,6 +421,12 @@ input, select, textarea { background: var(--field); }
 .bad-row { background: rgba(200, 50, 43, .07); }
 details summary { cursor: pointer; }
 
+/* شعار المتجر برأس صفحة المتجر */
+.store-logo {
+  width: 58px; height: 58px; border-radius: 14px; object-fit: cover;
+  background: var(--ground); border: 1px solid var(--line); flex: 0 0 auto;
+}
+
 /* ==================== جدول التعديل السريع ==================== */
 .edit-table td { padding: 6px 8px; vertical-align: middle; }
 .edit-table input, .edit-table select { padding: 6px 9px; font-size: 13.5px; }

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Marker } from 'react-leaflet';
 import { supabase, run, rpc } from '../../shared/supabase';
+import ImageUpload from '../../shared/ImageUpload';
 import { normalizePhone } from '../../shared/auth';
 import { BaseMap, ClickPicker, icons } from '../../shared/map';
 import { toPoint } from '../../shared/utils';
 import { Rating } from '../../shared/Stars';
 
-const EMPTY = { phone: '', name: '', category: '', address: '', lat: null, lng: null };
+const EMPTY = { phone: '', name: '', category: '', address: '', lat: null, lng: null, logo_url: '' };
 
 export default function Vendors() {
   const [vendors, setVendors] = useState([]);
@@ -31,7 +32,8 @@ export default function Vendors() {
     try {
       if (editId) {
         await run(supabase.from('vendors').update({
-          name: form.name.trim(), category: form.category || null, address: form.address || null, lat: form.lat, lng: form.lng,
+          name: form.name.trim(), category: form.category || null, address: form.address || null,
+          lat: form.lat, lng: form.lng, logo_url: form.logo_url || null,
         }).eq('id', editId));
       } else {
         await rpc('admin_setup_vendor', {
@@ -48,7 +50,7 @@ export default function Vendors() {
 
   function edit(v) {
     setEditId(v.id);
-    setForm({ ...EMPTY, name: v.name, category: v.category || '', address: v.address || '', lat: v.lat, lng: v.lng });
+    setForm({ ...EMPTY, name: v.name, category: v.category || '', address: v.address || '', lat: v.lat, lng: v.lng, logo_url: v.logo_url || '' });
     window.scrollTo({ top: 0 });
   }
 
@@ -72,6 +74,14 @@ export default function Vendors() {
         <div><label>اسم المتجر</label><input value={form.name} onChange={set('name')} /></div>
         <div><label>التصنيف</label><input value={form.category} onChange={set('category')} placeholder="هدايا، مطاعم، بقالة..." /></div>
         <div><label>العنوان</label><input value={form.address} onChange={set('address')} /></div>
+        {editId && (
+          <ImageUpload
+            label="شعار المتجر"
+            value={form.logo_url}
+            onChange={(url) => setForm((f) => ({ ...f, logo_url: url }))}
+            folder={`vendors/${editId}`}
+          />
+        )}
         <div>
           <label>موقع المتجر — اضغط على الخريطة</label>
           <BaseMap center={point || undefined} height={220}>
@@ -92,7 +102,17 @@ export default function Vendors() {
           <tbody>
             {vendors.map((v) => (
               <tr key={v.id}>
-                <td><strong>{v.name}</strong><div className="muted">{[v.category, v.address].filter(Boolean).join('، ')}</div></td>
+                <td>
+                  <span className="row" style={{ gap: 8 }}>
+                    {v.logo_url
+                      ? <img className="row-thumb" src={v.logo_url} alt="" loading="lazy" />
+                      : <span className="row-thumb none">🏪</span>}
+                    <span>
+                      <strong>{v.name}</strong>
+                      <div className="muted">{[v.category, v.address].filter(Boolean).join('، ')}</div>
+                    </span>
+                  </span>
+                </td>
                 <td>{v.owner?.name}<div className="muted" dir="ltr" style={{ textAlign: 'right' }}>{v.owner?.phone}</div></td>
                 <td><Rating avg={v.rating_avg} count={v.rating_count} className="" /></td>
                 <td>{v.products?.[0]?.count ?? 0}</td>

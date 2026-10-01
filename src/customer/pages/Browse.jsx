@@ -49,7 +49,7 @@ export default function Browse({ initialCategory = null, cart, onAdd, onOpenStor
 
   // البحث بالنص يشمل المتاجر أيضاً
   const { data: vendors } = useCached('vendors', () =>
-    run(supabase.from('vendors').select('id, name, category, address, is_open, rating_avg, rating_count')
+    run(supabase.from('vendors').select('id, name, category, address, is_open, rating_avg, rating_count, logo_url')
       .order('is_open', { ascending: false }).order('name'))
   );
   const matchedStores = term ? (vendors || []).filter((v) => v.name.includes(term)) : [];

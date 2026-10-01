@@ -20,7 +20,7 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
       run(
         supabase
           .from('vendors')
-          .select('id, name, category, address, lat, lng, is_open, products(id, name, description, price, image_url, images, category_id, variant_mode, variant_labels, variant_off, is_available)')
+          .select('id, name, category, address, lat, lng, is_open, logo_url, products(id, name, description, price, image_url, images, category_id, variant_mode, variant_labels, variant_off, is_available)')
           .eq('id', vendorId)
           .single()
       ).then((v) => ({
@@ -80,9 +80,12 @@ export default function Store({ vendorId, cart, onAdd, onBack, onCheckout }) {
     <div className="stack">
       <button className="ghost sm" onClick={onBack}>رجوع للمتاجر</button>
       <div className="row between">
-        <div>
-          <h2>{store.name} {stale && <span className="dot-pulse" aria-label="جاري التحديث" />}</h2>
-          <div className="muted">{[store.category, store.address].filter(Boolean).join('، ')}</div>
+        <div className="row" style={{ gap: 12 }}>
+          {store.logo_url && <img className="store-logo" src={store.logo_url} alt="" />}
+          <div>
+            <h2>{store.name} {stale && <span className="dot-pulse" aria-label="جاري التحديث" />}</h2>
+            <div className="muted">{[store.category, store.address].filter(Boolean).join('، ')}</div>
+          </div>
         </div>
       </div>
       {!store.is_open && <div className="error">المتجر مغلق حالياً، لا يمكن الطلب منه.</div>}

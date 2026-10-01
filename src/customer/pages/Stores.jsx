@@ -20,7 +20,7 @@ export default function Stores({ onOpen, onBrowse }) {
     run(
       supabase
         .from('vendors')
-        .select('id, name, category, address, is_open, rating_avg, rating_count')
+        .select('id, name, category, address, is_open, rating_avg, rating_count, logo_url')
         .order('is_open', { ascending: false })
         .order('name')
     )
@@ -61,7 +61,9 @@ export default function Stores({ onOpen, onBrowse }) {
         <div className="grid">
           {list.map((v) => (
             <button key={v.id} className="card-btn stack" disabled={!v.is_open} onClick={() => onOpen(v.id)}>
-              <div className="thumb">{CATEGORY_ICON[v.category] || '🏪'}</div>
+              {v.logo_url
+                ? <img className="thumb" src={v.logo_url} alt="" loading="lazy" />
+                : <div className="thumb">{CATEGORY_ICON[v.category] || '🏪'}</div>}
               <div className="row between">
                 <h3>{v.name}</h3>
                 <span className={`badge ${v.is_open ? 'open' : 'closed'}`}>{v.is_open ? 'مفتوح' : 'مغلق'}</span>

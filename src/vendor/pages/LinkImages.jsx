@@ -1,9 +1,10 @@
 // ربط صور من الكمبيوتر بالمنتجات الموجودة — المطابقة باسم الملف
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { supabase, run } from '../../shared/supabase';
+import { supabase, run, rpc } from '../../shared/supabase';
 import { uploadImage } from '../../shared/image';
 import { normHeader } from '../../shared/csv';
 import MigrateImages from './MigrateImages';
+import ImageUpload from '../../shared/ImageUpload';
 
 const CONCURRENCY = 2;
 
@@ -176,6 +177,8 @@ export default function LinkImages({ vendorId }) {
 
   return (
     <div className="stack">
+      <StoreLogo vendorId={vendorId} />
+
       <div className="panel stack">
         <h3>ربط صور من الكمبيوتر بالمنتجات</h3>
         <p className="muted" style={{ margin: 0 }}>
@@ -276,6 +279,58 @@ export default function LinkImages({ vendorId }) {
       )}
 
       <MigrateImages vendorId={vendorId} />
+    </div>
+  );
+}
+
+/* شعار المتجر — يظهر للزبون بقائمة المتاجر وبرأس صفحة المتجر */
+function StoreLogo({ vendorId }) {
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+  const [off, setOff] = useState(false);
+
+  useEffect(() => {
+    run(supabase.from('vendors').select('logo_url').eq('id', vendorId).single())
+      .then((v) => setUrl(v?.logo_url || ''))
+      .catch((e) => {
+        if (/schema cache|column/i.test(String(e.message))) setOff(true);
+      });
+  }, [vendorId]);
+
+  async function save(next) {
+    setBusy(true); setError(''); setMsg('');
+    try {
+      await rpc('vendor_set_logo', { p_url: next || null });
+      setUrl(next);
+      setMsg(next ? 'تم حفظ الشعار ✅' : 'تمت إزالة الشعار');
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (off) return null;
+
+  return (
+    <div className="panel stack">
+      <h3>شعار المتجر</h3>
+      <p className="muted" style={{ margin: 0 }}>
+        بيظهر للزبون بقائمة المتاجر وبرأس صفحة متجرك. استعمل صورة مربّعة.
+      </p>
+      <div style={{ maxWidth: 240 }}>
+        <ImageUpload
+          label=""
+          value={url}
+          onChange={save}
+          folder={`vendors/${vendorId}`}
+        />
+      </div>
+      {busy && <span className="muted">جاري الحفظ...</span>}
+      {msg && <div className="notice">{msg}</div>}
+      {error && <div className="error">{error}</div>}
     </div>
   );
 }
