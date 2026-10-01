@@ -8,6 +8,8 @@ import Products from './pages/Products';
 import BulkAdd from './pages/BulkAdd';
 import Import from './pages/Import';
 import LinkImages from './pages/LinkImages';
+import Sales from './pages/Sales';
+import BulkEdit from './pages/BulkEdit';
 
 export default function App() {
   const { profile, loading, error, reload, logout } = useProfile('vendor');
@@ -59,7 +61,7 @@ export default function App() {
     <>
       <Topbar
         subtitle={`${store.name}${store.rating_count ? ` ★ ${Number(store.rating_avg).toFixed(1)}` : ''}`}
-        tabs={[['orders', 'الطلبات'], ['products', 'المنتجات'], ['bulk', 'إضافة سريعة'], ['import', 'استيراد'], ['images', 'الصور']]}
+        tabs={[['orders', 'الطلبات'], ['sales', 'المبيعات'], ['products', 'المنتجات'], ['edit', 'تعديل سريع'], ['bulk', 'إضافة سريعة'], ['import', 'استيراد'], ['images', 'الصور']]}
         active={tab}
         onTab={setTab}
         right={
@@ -79,7 +81,9 @@ export default function App() {
       )}
       <main className="page">
         {tab === 'orders' && <Orders vendorId={store.id} />}
+        {tab === 'sales' && <Sales vendorId={store.id} />}
         {tab === 'products' && <Products vendorId={store.id} />}
+        {tab === 'edit' && <BulkEdit vendorId={store.id} />}
         {tab === 'bulk' && <BulkAdd vendorId={store.id} onDone={() => setTab('products')} />}
         {tab === 'import' && <Import vendorId={store.id} onDone={() => setTab('images')} />}
         {tab === 'images' && <LinkImages vendorId={store.id} />}

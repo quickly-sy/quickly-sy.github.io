@@ -17,6 +17,9 @@ export default function Products({ vendorId }) {
   const [form, setForm] = useState(EMPTY);
   const [editId, setEditId] = useState(null);
   const [error, setError] = useState('');
+  const [q, setQ] = useState('');              // بحث بالاسم أو المفتاح
+  const [only, setOnly] = useState('all');     // all | noimg | nocat
+  const [sort, setSort] = useState('new');     // new | name | priceUp | priceDown
 
   const load = useCallback(() => {
     run(supabase.from('products').select('*').eq('vendor_id', vendorId).order('id', { ascending: false }))
@@ -42,6 +45,23 @@ export default function Products({ vendorId }) {
   };
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  const norm = (t) => String(t || '').toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').trim();
+  const term = norm(q);
+  const shown = items
+    .filter((p) => !term || norm(p.name).includes(term) || norm(p.code).includes(term))
+    .filter((p) => (
+      only === 'noimg' ? !p.image_url
+        : only === 'nocat' ? !p.category_id
+          : true
+    ))
+    .slice()
+    .sort((a, b) => (
+      sort === 'name' ? a.name.localeCompare(b.name, 'ar')
+        : sort === 'priceUp' ? Number(a.price) - Number(b.price)
+          : sort === 'priceDown' ? Number(b.price) - Number(a.price)
+            : b.id - a.id
+    ));
 
   async function save(e) {
     e.preventDefault();
@@ -166,15 +186,38 @@ export default function Products({ vendorId }) {
         </div>
       </form>
 
-      <section className="panel">
+      <section className="panel stack">
+        <input
+          className="search-box"
+          placeholder="ابحث باسم المنتج أو رقم المفتاح"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <div className="row between">
+          <div className="chips">
+            {[['all', `الكل (${items.length})`], ['noimg', 'بلا صورة'], ['nocat', 'بلا تصنيف']].map(([k, l]) => (
+              <button key={k} type="button" className={only === k ? 'on' : ''} onClick={() => setOnly(k)}>{l}</button>
+            ))}
+          </div>
+          <select style={{ width: 'auto' }} value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="new">الأحدث</option>
+            <option value="name">الاسم</option>
+            <option value="priceDown">السعر: الأعلى أولاً</option>
+            <option value="priceUp">السعر: الأدنى أولاً</option>
+          </select>
+        </div>
+        {term || only !== 'all' ? <span className="muted">ظاهر: {shown.length}</span> : null}
+
         {!items.length ? (
           <div className="empty">أضف أول منتج من النموذج.</div>
+        ) : !shown.length ? (
+          <div className="empty">ما في منتجات مطابقة.</div>
         ) : (
           <div className="table-wrap">
             <table>
               <thead><tr><th></th><th>المنتج</th><th>التصنيف</th><th>السعر</th><th>الحالة</th><th></th></tr></thead>
               <tbody>
-                {items.map((p) => (
+                {shown.map((p) => (
                   <tr key={p.id}>
                     <td>
                       {p.image_url

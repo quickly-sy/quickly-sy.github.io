@@ -421,6 +421,31 @@ input, select, textarea { background: var(--field); }
 .bad-row { background: rgba(200, 50, 43, .07); }
 details summary { cursor: pointer; }
 
+/* ==================== جدول التعديل السريع ==================== */
+.edit-table td { padding: 6px 8px; vertical-align: middle; }
+.edit-table input, .edit-table select { padding: 6px 9px; font-size: 13.5px; }
+.edit-table input[type="checkbox"] { width: 17px; height: 17px; }
+.edit-table select { min-width: 120px; }
+.row-dirty { background: rgba(216, 168, 17, .10); }
+.row-dirty td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* شريط التطبيق الجماعي */
+.bulk-bar { border-color: var(--accent); background: var(--accent-soft); }
+.bulk-bar select, .bulk-bar input { background: var(--paper); }
+
+/* شريط الحفظ يبقى ظاهر أسفل الشاشة */
+.save-bar { position: sticky; bottom: 10px; z-index: 40; box-shadow: 0 6px 22px rgba(0, 0, 0, .14); }
+
+/* ==================== بطاقات المبيعات ==================== */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; }
+.kpi {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 3px;
+}
+.kpi-label { font-size: 13px; color: var(--muted); }
+.kpi-value { font-size: 20px; line-height: 1.25; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--accent-text); }
+.kpi .muted { font-size: 11.5px; }
+
 /* ==================== الموديلات ==================== */
 /* وسم صغير بجانب اسم المنتج: "موديل 3" */
 .vtag {
