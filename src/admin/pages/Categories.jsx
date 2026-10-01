@@ -55,8 +55,17 @@ export default function Categories() {
 
   const saveEdit = () =>
     act(async () => {
+      const parent = editing.parent_id ? Number(editing.parent_id) : null;
+      if (parent === editing.id) throw new Error('ما بيقدر يكون تابعاً لحاله');
+      if (parent && editing.kids > 0) {
+        throw new Error('هذا التصنيف تحته تصنيفات فرعية — انقلها أو احذفها قبل ما تجعله فرعياً');
+      }
       await run(supabase.from('categories')
-        .update({ name: editing.name.trim(), icon: editing.icon?.trim() || null })
+        .update({
+          name: editing.name.trim(),
+          icon: editing.icon?.trim() || null,
+          parent_id: parent,
+        })
         .eq('id', editing.id));
       setEditing(null);
     });
@@ -113,7 +122,7 @@ export default function Categories() {
                   <button className={`sm ${m.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(m)}>
                     {m.is_active ? 'ظاهر' : 'مخفي'}
                   </button>
-                  <button className="ghost sm" onClick={() => setEditing({ id: m.id, name: m.name, icon: m.icon || '' })}>تعديل</button>
+                  <button className="ghost sm" onClick={() => setEditing({ id: m.id, name: m.name, icon: m.icon || '', parent_id: '', kids: subsOf(m.id).length })}>تعديل</button>
                   <button className="ghost sm" onClick={() => remove(m)}>حذف</button>
                 </div>
               </div>
@@ -129,7 +138,7 @@ export default function Categories() {
                         <button className={`sm ${s.is_active ? 'ok' : 'danger'}`} onClick={() => toggle(s)}>
                           {s.is_active ? 'ظاهر' : 'مخفي'}
                         </button>
-                        <button className="ghost sm" onClick={() => setEditing({ id: s.id, name: s.name, icon: s.icon || '' })}>تعديل</button>
+                        <button className="ghost sm" onClick={() => setEditing({ id: s.id, name: s.name, icon: s.icon || '', parent_id: String(s.parent_id), kids: 0 })}>تعديل</button>
                         <button className="ghost sm" onClick={() => remove(s)}>حذف</button>
                       </div>
                     </div>
@@ -164,6 +173,21 @@ export default function Categories() {
             <h3>تعديل التصنيف</h3>
             <div><label>الاسم</label><input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
             <div><label>إيموجي</label><input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} /></div>
+            <div>
+              <label>موقعه بالشجرة</label>
+              <select
+                value={editing.parent_id}
+                onChange={(e) => setEditing({ ...editing, parent_id: e.target.value })}
+              >
+                <option value="">تصنيف رئيسي (بالأعلى)</option>
+                {mains.filter((m) => m.id !== editing.id).map((m) => (
+                  <option key={m.id} value={m.id}>فرعي تحت: {m.icon ? `${m.icon} ` : ''}{m.name}</option>
+                ))}
+              </select>
+              {editing.kids > 0 && (
+                <span className="muted">تحته {editing.kids} تصنيف فرعي — لازم يبقى رئيسياً.</span>
+              )}
+            </div>
             <div className="row">
               <button onClick={saveEdit}>حفظ</button>
               <button className="ghost" onClick={() => setEditing(null)}>إلغاء</button>
