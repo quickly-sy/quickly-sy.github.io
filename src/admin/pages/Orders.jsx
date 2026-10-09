@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase, run, rpc, subscribe } from '../../shared/supabase';
-import { STATUS, DRIVER_STATUS, money, formatTime } from '../../shared/utils';
+import { STATUS, DRIVER_STATUS, money, formatTime, minutesSince, sinceText } from '../../shared/utils';
 
-const FILTERS = [['active', 'الجارية'], ['all', 'الكل'], ...Object.entries(STATUS)];
+const FILTERS = [['active', 'الجارية'], ['stuck', 'عالقة — ما حدا استلمها'], ['all', 'الكل'], ...Object.entries(STATUS)];
 const RUNNING = ['pending', 'confirmed', 'preparing', 'ready', 'picked'];
 const ASSIGNABLE = ['pending', 'confirmed', 'preparing', 'ready'];
+// طلب بلا سائق مرّ عليه أكتر من هيك = عالق، لازم حدا يتدخّل
+const STUCK_MIN = 20;
+const isStuck = (o) =>
+  !o.driver_id && ASSIGNABLE.includes(o.status) && (minutesSince(o.created_at) ?? 0) > STUCK_MIN;
 
 export default function Orders() {
   const [filter, setFilter] = useState('active');
@@ -17,9 +21,11 @@ export default function Orders() {
     let q = supabase.from('orders')
       .select('*, order_items(*), offer_views(seen_at, declined_at, driver:drivers(id, profile:profiles(name)))')
       .order('id', { ascending: false }).limit(200);
-    if (filter === 'active') q = q.in('status', RUNNING);
+    if (filter === 'active' || filter === 'stuck') q = q.in('status', RUNNING);
     else if (filter !== 'all') q = q.eq('status', filter);
-    run(q).then(setOrders).catch((e) => setError(e.message));
+    run(q)
+      .then((rows) => setOrders(filter === 'stuck' ? rows.filter(isStuck) : rows))
+      .catch((e) => setError(e.message));
     run(supabase.from('drivers').select('id, status, is_active, kind, profile:profiles(name)').order('id')).then(setDrivers).catch(() => {});
   }, [filter]);
 
@@ -70,7 +76,10 @@ export default function Orders() {
                   </td>
                   <td>{o.vendor_name}</td>
                   <td className="price">{money(Number(o.total) + Number(o.delivery_fee))}</td>
-                  <td><span className={`badge ${o.status}`}>{STATUS[o.status]}</span></td>
+                  <td>
+                    <span className={`badge ${o.status}`}>{STATUS[o.status]}</span>
+                    {isStuck(o) && <div className="error-text">عالق {sinceText(o.created_at)}</div>}
+                  </td>
                   <td style={{ minWidth: 200 }}>
                     <div>{o.driver_name || <span className="muted">بدون سائق</span>}</div>
                     <OfferViews views={o.offer_views} acceptedBy={o.driver_id} />

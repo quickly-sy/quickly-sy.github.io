@@ -293,6 +293,7 @@ input, select, textarea { background: var(--field); }
 }
 .modal { width: min(420px, 100%); }
 .dimmed { opacity: .55; }
+.error-text { color: var(--danger); font-weight: 600; font-size: 13px; }
 
 /* ==================== شاشة التصفّح ==================== */
 

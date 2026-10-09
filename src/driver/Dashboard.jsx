@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Marker } from 'react-leaflet';
+import { Marker, Polyline } from 'react-leaflet';
 import { supabase, run, rpc, subscribe } from '../shared/supabase';
 import { BaseMap, FitBounds, icons, DEFAULT_CENTER } from '../shared/map';
-import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, TASK_STATUS, TASK_BADGE, TASK_RUNNING, money, toPoint } from '../shared/utils';
+import { STATUS, DRIVER_STATUS, ACTIVE_STATUSES, TASK_STATUS, TASK_BADGE, TASK_RUNNING, money, toPoint, minutesSince, sinceText } from '../shared/utils';
+
+// عرض أقدم من هيك ما بيرن — يعني طلب ما حدا قبله ومو معقول يضل يزعج السائق
+const FRESH_MIN = 20;
+// خطوط الخريطة: المشوار كامل بالأزرق المقطّع، ووجهتك الحالية بالذهبي الممتلئ
+const TRIP_LINE = { color: '#1c64d6', weight: 4, opacity: 0.5, dashArray: '8 8' };
+const LEG_LINE = { color: '#d8a811', weight: 5, opacity: 0.9 };
 import { startAlarm, stopAlarm, isMuted, setMuted } from '../shared/alarm';
 import { Rating } from '../shared/Stars';
 
@@ -22,6 +28,30 @@ const EVERY_IDLE_MS = 30000;
 
 const directionsUrl = (from, to) =>
   `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=${from.join(',')};${to.join(',')}`;
+
+function Offer({ o, stale, onAccept, onDecline }) {
+  return (
+    <div className={`panel stack ${stale ? 'dimmed' : ''}`}>
+      <div className="row between">
+        <h3>#{o.order_id} {o.vendor_name}</h3>
+        <span className={`badge ${o.status}`}>{STATUS[o.status]}</span>
+      </div>
+      <div className="muted">من: {o.vendor_address}</div>
+      <div className="muted">إلى: {o.customer_address}</div>
+      <div className="row between">
+        <span>{o.items_count} قطع</span>
+        <span className={stale ? 'error-text' : 'muted'}>{sinceText(o.created_at)}</span>
+      </div>
+      <div className="row between">
+        <span className="price">أجرة التوصيل {money(o.delivery_fee)}</span>
+      </div>
+      <div className="row">
+        <button style={{ flex: 1 }} onClick={() => onAccept(o.order_id)}>قبول الطلب</button>
+        <button className="ghost" onClick={() => onDecline(o.order_id)}>رفض</button>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard({ profile }) {
   const [me, setMe] = useState(null);
@@ -94,9 +124,14 @@ export default function Dashboard({ profile }) {
     return () => document.removeEventListener('visibilitychange', report);
   }, [visibleOffers.map((o) => o.order_id).join(',')]);
 
+  // نفصل العروض الطازجة عن القديمة: القديمة بتضل ظاهرة بس ما بترن
+  const freshOffers = visibleOffers.filter((o) => (minutesSince(o.created_at) ?? 0) <= FRESH_MIN);
+  const staleOffers = visibleOffers.filter((o) => (minutesSince(o.created_at) ?? 0) > FRESH_MIN);
+  const [showStale, setShowStale] = useState(false);
+
   // يرن حتى تقبل العرض أو ترفضه — وكذلك عند وصول مهمة خاصة
   const waitingTask = tasks.some((t) => t.status === 'assigned');
-  const needsAnswer = visibleOffers.length > 0 || waitingTask;
+  const needsAnswer = freshOffers.length > 0 || waitingTask;
   useEffect(() => {
     if (needsAnswer && !muted) startAlarm();
     else stopAlarm();
@@ -224,6 +259,12 @@ export default function Dashboard({ profile }) {
     load();
   }
 
+  const accept = (id) => act(() => rpc('driver_accept_order', { p_order_id: id }));
+  const decline = (id) => {
+    setDeclined((d) => [...d, id]);
+    rpc('driver_decline_offer', { p_order_id: id }).catch(() => {});
+  };
+
   // بعد تسليم الطلب: رسالة تحفيزية + عدد ما سلّمته اليوم
   async function deliver(order) {
     try {
@@ -310,7 +351,9 @@ export default function Dashboard({ profile }) {
             </div>
             <div className="split wide">
               <BaseMap height={320}>
-                <FitBounds points={[vendorPoint, homePoint]} />
+                <FitBounds points={[vendorPoint, homePoint, pos]} />
+                {vendorPoint && homePoint && <Polyline positions={[vendorPoint, homePoint]} pathOptions={TRIP_LINE} />}
+                {pos && target && <Polyline positions={[pos, target]} pathOptions={LEG_LINE} />}
                 {vendorPoint && <Marker position={vendorPoint} icon={icons.vendor} />}
                 {homePoint && <Marker position={homePoint} icon={icons.home} />}
                 {pos && <Marker position={pos} icon={icons.driver} />}
@@ -371,7 +414,9 @@ export default function Dashboard({ profile }) {
                   </div>
                   <div className="split wide">
                     <BaseMap height={300}>
-                      <FitBounds points={[from, to]} />
+                      <FitBounds points={[from, to, pos]} />
+                      {from && to && <Polyline positions={[from, to]} pathOptions={TRIP_LINE} />}
+                      {pos && to && <Polyline positions={[pos, to]} pathOptions={LEG_LINE} />}
                       {from && <Marker position={from} icon={icons.vendor} />}
                       {to && <Marker position={to} icon={icons.bank} />}
                       {pos && <Marker position={pos} icon={icons.driver} />}
@@ -408,31 +453,31 @@ export default function Dashboard({ profile }) {
             <h2>عروض الطلبات</h2>
             {needsAnswer && !muted && <button className="ghost sm" onClick={stopAlarm}>🔇 إسكات هذا التنبيه</button>}
           </div>
-          {!visibleOffers.length ? (
+          {!freshOffers.length ? (
             <div className="empty">لا توجد عروض الآن. ستسمع تنبيهاً عند وصول عرض.</div>
           ) : (
             <div className="grid">
-              {visibleOffers.map((o) => (
-                <div key={o.order_id} className="panel stack">
-                  <div className="row between">
-                    <h3>#{o.order_id} {o.vendor_name}</h3>
-                    <span className={`badge ${o.status}`}>{STATUS[o.status]}</span>
+              {freshOffers.map((o) => <Offer key={o.order_id} o={o} onAccept={accept} onDecline={decline} />)}
+            </div>
+          )}
+
+          {/* طلبات قديمة ما حدا قبلها: ما بترن، بس ما منخفيها حتى ما يضيع طلب زبون */}
+          {staleOffers.length > 0 && (
+            <div className="stack">
+              <button className="ghost sm" onClick={() => setShowStale((v) => !v)}>
+                {showStale ? '▾' : '▸'} طلبات قديمة ما حدا قبلها ({staleOffers.length})
+              </button>
+              {showStale && (
+                <>
+                  <div className="notice">
+                    هدول طلبات مرّ عليها أكتر من {FRESH_MIN} دقيقة وما حدا استلمها. اتصل بالزبون قبل ما تقبل —
+                    يمكن يكون ألغى أو ما عاد بالبيت.
                   </div>
-                  <div className="muted">من: {o.vendor_address}</div>
-                  <div className="muted">إلى: {o.customer_address}</div>
-                  <div className="row between">
-                    <span>{o.items_count} قطع</span>
-                    <span className="price">أجرة التوصيل {money(o.delivery_fee)}</span>
+                  <div className="grid">
+                    {staleOffers.map((o) => <Offer key={o.order_id} o={o} stale onAccept={accept} onDecline={decline} />)}
                   </div>
-                  <div className="row">
-                    <button style={{ flex: 1 }} onClick={() => act(() => rpc('driver_accept_order', { p_order_id: o.order_id }))}>قبول الطلب</button>
-                    <button className="ghost" onClick={() => {
-                      setDeclined((d) => [...d, o.order_id]);
-                      rpc('driver_decline_offer', { p_order_id: o.order_id }).catch(() => {});
-                    }}>رفض</button>
-                  </div>
-                </div>
-              ))}
+                </>
+              )}
             </div>
           )}
         </section>

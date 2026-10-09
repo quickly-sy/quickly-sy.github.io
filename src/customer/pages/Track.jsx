@@ -75,7 +75,17 @@ export default function Track({ orderId, onBack }) {
             <Suspense fallback={<span className="sk" style={{ height: 380 }} />}>
               <MapView
                 height={380}
-                fit={[vendorPoint, homePoint]}
+                fit={[vendorPoint, homePoint, tracking ? driverPos : null]}
+                lines={[
+                  // المشوار كامل: المتجر ← عندك
+                  { points: [vendorPoint, homePoint], dashed: true, opacity: 0.5, weight: 4 },
+                  // وين السائق هلق ولوين رايح
+                  tracking && driverPos && {
+                    points: [driverPos, order.status === 'picked' ? homePoint : vendorPoint],
+                    color: '#d8a811',
+                    weight: 5,
+                  },
+                ]}
                 markers={[
                   vendorPoint && { point: vendorPoint, icon: 'vendor', popup: order.vendor_name },
                   homePoint && { point: homePoint, icon: 'home', popup: 'موقعك' },

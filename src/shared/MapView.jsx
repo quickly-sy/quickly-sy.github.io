@@ -8,8 +8,11 @@ export { DEFAULT_CENTER };
 /*
   markers: [{ point, icon: 'vendor'|'home'|'driver'|'bank'|..., popup, draggable, onDragEnd, zIndex }]
   circle:  { center, radius }
-  line:    [[lat,lng], ...]
+  line:    [[lat,lng], ...]                       — خط واحد (كما كان)
+  lines:   [{ points, color, weight, opacity, dashed }]  — عدة خطوط، والقيم الفاضية بتنشطب
 */
+const LINE_DEFAULT = { color: '#1c64d6', weight: 5, opacity: 0.8 };
+
 export default function MapView({
   height = 320,
   center,
@@ -18,9 +21,15 @@ export default function MapView({
   markers = [],
   circle,
   line,
+  lines = [],
   onPick,
 }) {
   const points = useMemo(() => fit.filter(Boolean), [fit]);
+  const allLines = [
+    ...(line && line.length > 1 ? [{ points: line }] : []),
+    ...lines,
+  ]
+    .filter((l) => l && Array.isArray(l.points) && l.points.filter(Boolean).length > 1);
   return (
     <BaseMap center={center || DEFAULT_CENTER} zoom={zoom} height={height}>
       {onPick && <ClickPicker onPick={onPick} />}
@@ -28,9 +37,19 @@ export default function MapView({
       {circle?.center && (
         <Circle center={circle.center} radius={circle.radius} pathOptions={{ color: '#d8a811', weight: 1, fillOpacity: 0.12 }} />
       )}
-      {line && line.length > 1 && (
-        <Polyline positions={line} pathOptions={{ color: '#1c64d6', weight: 5, opacity: 0.8 }} />
-      )}
+      {allLines.map((l, i) => (
+        <Polyline
+          key={l.key ?? i}
+          positions={l.points.filter(Boolean)}
+          pathOptions={{
+            ...LINE_DEFAULT,
+            ...(l.color ? { color: l.color } : {}),
+            ...(l.weight ? { weight: l.weight } : {}),
+            ...(l.opacity != null ? { opacity: l.opacity } : {}),
+            ...(l.dashed ? { dashArray: '8 8' } : {}),
+          }}
+        />
+      ))}
       {markers.filter((m) => m && m.point).map((m, i) => (
         <Pin key={m.key ?? i} {...m} />
       ))}

@@ -33,6 +33,24 @@ export const toPoint = (lat, lng) => (lat != null && lng != null ? [Number(lat),
 export const formatTime = (d) =>
   new Date(d).toLocaleString('ar', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+// عمر العرض/الطلب بالدقائق — نميّز فيه الطلب الطازج من طلب بايت ما حدا قبله
+export function minutesSince(iso) {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  return Number.isFinite(ms) ? Math.max(0, Math.round(ms / 60000)) : null;
+}
+
+export function sinceText(iso) {
+  const m = minutesSince(iso);
+  if (m == null) return '';
+  if (m < 1) return 'الآن';
+  if (m < 60) return `من ${m} دقيقة`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `من ${h} ساعة`;
+  const d = Math.round(h / 24);
+  return `من ${d} يوم`;
+}
+
 // صوت تنبيه بدون ملفات. المتصفح يحتاج نقرة واحدة على الصفحة قبل أول صوت.
 let ctx;
 export function unlockAudio() {
